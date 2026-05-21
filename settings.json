@@ -1,0 +1,50 @@
+{
+  "env": {
+    "DISABLE_AUTOUPDATER": "1",
+    "ANTHROPIC_BASE_URL": "https://api.deepseek.com/anthropic",
+    "ANTHROPIC_AUTH_TOKEN": "sk-f58a6879f8cf4583bc2db62d202394bc",
+    "ANTHROPIC_MODEL": "deepseek-v4-pro[1m]",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "deepseek-v4-pro[1m]",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "deepseek-v4-pro[1m]",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "deepseek-v4-flash",
+    "CLAUDE_CODE_SUBAGENT_MODEL": "deepseek-v4-flash",
+    "CLAUDE_CODE_EFFORT_LEVEL": "max"
+  },
+  "defaultMode": "auto",
+  "skipAutoPermissionPrompt": true,
+  "permissions": {
+    "defaultMode": "auto"
+  },
+  "mcpServers": {
+    "git": {
+      "command": "npx",
+      "args": ["@anthropic/mcp-server-git"],
+      "type": "stdio"
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["@playwright/mcp@latest"],
+      "type": "stdio"
+    },
+    "openmemory": {
+      "command": "npx",
+      "args": ["@peakmojo/mcp-openmemory@latest"],
+      "type": "stdio"
+    },
+    "websearch": {
+      "command": "npx",
+      "args": ["-y", "agentsweb-mcp"],
+      "type": "stdio"
+    },
+    "fetch": {
+      "command": "npx",
+      "args": ["-y", "@anthropic/mcp-server-fetch"],
+      "type": "stdio"
+    },
+    "jupyter": {
+      "command": "python3",
+      "args": ["-m", "jupyter_mcp_server"],
+      "type": "stdio"
+    }
+  }
+}

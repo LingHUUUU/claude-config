@@ -1,0 +1,21 @@
+# Session and temporary files
+history.jsonl
+*.log
+*.tmp
+.lock
+.highwatermark
+.last-cleanup
+
+# Directories with runtime data
+projects/
+sessions/
+shell-snapshots/
+telemetry/
+cache/
+backups/
+paste-cache/
+session-env/
+tasks/
+file-history/
+plans/
+memory/
