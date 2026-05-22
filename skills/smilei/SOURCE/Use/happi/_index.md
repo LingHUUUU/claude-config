@@ -1,20 +1,11 @@
 # Happi Reference - Index
 
-This directory contains split documentation files (~100 lines each). Read only the file(s) relevant to the current task.
+Complete happi (post-processing) reference. Read only the file(s) relevant to the current task. Each file contains the full official documentation for that topic.
 
-| File | Content | Lines |
-|------|---------|-------|
-| [00_open.md](00_open.md) | Post-process | 86 |
-| [01a_obtain_open.md](01a_obtain_open.md) | Obtain diagnostic information | 52 |
-| [01b_scalar_field.md](01b_scalar_field.md) | Open a Scalar diagnostic | 104 |
-| [01c_probe_binning.md](01c_probe_binning.md) | Open a Probe diagnostic | 80 |
-| [01d_screen_spec.md](01d_screen_spec.md) | Open a Screen diagnostic | 104 |
-| [01e_track_new.md](01e_track_new.md) | Open a NewParticles diagnostic | 97 |
-| [01f_perf_units.md](01f_perf_units.md) | Specifying units | 31 |
-| [02a_other_args.md](02a_other_args.md) | Other arguments for diagnostics | 34 |
-| [02b_get_data.md](02b_get_data.md) | Obtain the data | 118 |
-| [02c_vtk.md](02c_vtk.md) | Export 2D or 3D data to VTK | 40 |
-| [02d_plot_streak.md](02d_plot_streak.md) | Plot the data at one timestep | 75 |
-| [02e_animate_slide.md](02e_animate_slide.md) | Animated plot | 64 |
-| [02f_multi_advanced.md](02f_multi_advanced.md) | Simultaneous plotting of multiple diagnostics | 121 |
-| [02g_update_tools.md](02g_update_tools.md) | Update the plotting options | 36 |
+The complete raw post-processing page is available at `SMILEI_MANUAL_SOURCE/Use/happi/post-processing.md` (1122 lines).
+
+| File | Content | Topics |
+|------|---------|--------|
+| [00_open.md](00_open.md) | Opening simulations, namelist, diagnostics info | `happi.Open()`, `.namelist`, `.getDiags()`, `.getScalars()`, `.getTrackSpecies()`, `.fieldInfo()`, `.probeInfo()`, `.performanceInfo()` |
+| [01_diagnostics.md](01_diagnostics.md) | All diagnostic types | `Scalar()`, `Field()`, `Probe()`, `ParticleBinning()`, `Screen()`, `RadiationSpectrum()`, `TrackParticles()`, `NewParticles()`, `Performances()`, specifying units |
+| [02_data_plot.md](02_data_plot.md) | Data, VTK, plot, animate | `.getData()`, `.getAxis()`, `.getTimes()`, `.getXmoved()`, `.toVTK()`, `.plot()`, `.streak()`, `.animate()`, `.slide()`, `happi.multiPlot()`, `happi.multiSlide()`, advanced plotting options, `.setPlotOptions()` |

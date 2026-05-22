@@ -1,233 +1,106 @@
-# Profiles[¶](#profiles "Link to this heading")
+# Profiles
 
-Several quantities require the input of a profile: particle charge, particle density,
-external fields, etc. Depending on the case, they can be *spatial* or *temporal*
-profiles.
+Several quantities require profiles: particle charge, density, external fields, etc. Profiles can be *spatial* or *temporal*.
 
 ---
 
-## Constant profiles[¶](#constant-profiles "Link to this heading")
+## Constant profiles
 
-- `Species( ... , charge = -3., ... )` defines a species with charge \(Z^\star=3\).
-- `Species( ... , number_density = 10., ... )` defines a species with density \(10\,N\_r\).
-  You can choose `number_density` or `charge_density`
-- `Species( ... , mean_velocity = [0.05, 0., 0.], ... )` defines a species
-  with drift velocity \(v\_x = 0.05\,c\) over the whole box.
-- `Species(..., momentum_initialization="maxwell-juettner", temperature=[1e-5], ...)` defines
-  a species with a Maxwell-Jüttner distribution of temperature \(T = 10^{-5}\,m\_ec^2\) over the whole box.
-  Note that the temperature may be anisotropic: `temperature=[1e-5, 2e-5, 2e-5]`.
-- `Species( ... , particles_per_cell = 10., ... )` defines a species with 10 particles per cell.
-- `ExternalField( field="Bx", profile=0.1 )` defines a constant external field \(B\_x = 0.1 B\_r\).
+```python
+Species(..., charge = -3., ...)                     # charge Z* = 3
+Species(..., number_density = 10., ...)             # density = 10 Nr (use number_density OR charge_density)
+Species(..., mean_velocity = [0.05, 0., 0.], ...)   # drift velocity vx = 0.05c over whole box
+Species(..., temperature = [1e-5], ...)             # temperature T = 1e-5 m_e c^2 (isotropic)
+Species(..., temperature = [1e-5, 2e-5, 2e-5], ...) # anisotropic temperature
+Species(..., particles_per_cell = 10., ...)         # 10 particles per cell
+ExternalField(field="Bx", profile=0.1)              # constant Bx = 0.1 Br
+```
 
 ---
 
-## *Python* profiles[¶](#python-profiles "Link to this heading")
+## Python function profiles
 
-Any *python* function can be a profile. Examples:
+Any Python function of spatial coordinates and/or time can be a profile:
 
-```
-def f(x):
-    if x<1.: return 0.
-    else: return 1.
-```
+```python
+# 1D spatial profile
+def n_profile(x):
+    if x < 10.0: return 1.0
+    else: return 0.0
 
-```
-import math
-def f(x,y):    # two variables for 2D simulation
-    twoPI = 2.* math.pi
-    return math.cos(  twoPI * x/3.2 )
+Species(..., number_density = n_profile, ...)
 ```
 
-```
-f = lambda x: x**2 - 1.
-```
+```python
+# 2D spatial profile
+def density(x, y):
+    return 1.0 * (y > 10.0) * (y < 30.0)
 
-Once the function is created, you have to include it in the block you want,
-for example:
-
-```
-Species( ... , charge = f, ... )
-
-Species( ... , mean_velocity = [f, 0, 0], ... )
+Species(..., number_density = density, ...)
 ```
 
-Note
+```python
+# 3D spatial + temporal profile
+def n(x, y, z, t):
+    return 1.0 * (x < 10.0 + 0.01*t)
 
-It is possible, for higher performances, to create functions with
-arguments *(x, y, etc.)* that are actually *numpy* arrays. If the function returns
-a *numpy* array of the same size, it will automatically be considered as a profile
-acting on arrays instead of single floats. Currently, this feature is only available
-on Species’ profiles.
+Species(..., number_density = n, ...)
+```
+
+```python
+# Laser profile with transverse coordinates
+def transverse_profile(y, z):
+    return exp(-(y**2 + z**2) / waist**2)
+```
+
+### Profile functions in ExternalField
+```python
+def By_profile(x, y):
+    return 0.01 * cos(x)
+
+ExternalField(field="By", profile=By_profile)
+```
 
 ---
 
-## Pre-defined *spatial* profiles[¶](#pre-defined-spatial-profiles "Link to this heading")
+## Predefined analytical profiles
 
-constant(*value*, *xvacuum=0.*, *yvacuum=0.*)[¶](#constant "Link to this definition")
-:   Parameters:
-    :   - **value** – the magnitude
-        - **xvacuum** – vacuum region before the start of the profile.
+Several analytical profiles are available:
 
-trapezoidal(*max*, *xvacuum=0.*, *xplateau=None*, *xslope1=0.*, *xslope2=0.*, *yvacuum=0.*, *yplateau=None*, *yslope1=0.*, *yslope2=0.*)[¶](#trapezoidal "Link to this definition")
-:   Parameters:
-    :   - **max** – maximum value
-        - **xvacuum** – empty length before the ramp up
-        - **xplateau** – length of the plateau (default is [`grid_length`](namelist.html#grid_length "grid_length") \(-\) `xvacuum`)
-        - **xslope1** – length of the ramp up
-        - **xslope2** – length of the ramp down
+```python
+# Gaussian density profile
+Species(..., number_density = gaussian(x0=10.0, amplitude=1.0, length=2.0), ...)
 
-gaussian(*max*, *xvacuum=0.*, *xlength=None*, *xfwhm=None*, *xcenter=None*, *xorder=2*, *yvacuum=0.*, *ylength=None*, *yfwhm=None*, *ycenter=None*, *yorder=2*)[¶](#gaussian "Link to this definition")
-:   Parameters:
-    :   - **max** – maximum value
-        - **xvacuum** – empty length before starting the profile
-        - **xlength** – length of the profile (default is [`grid_length`](namelist.html#grid_length "grid_length") \(-\) `xvacuum`)
-        - **xfwhm** – gaussian FWHM (default is `xlength/3.`)
-        - **xcenter** – gaussian center position (default is in the middle of `xlength`)
-        - **xorder** – order of the gaussian.
+# Trapezoidal density profile
+Species(..., number_density = trapezoidal(x_start=5.0, x_end=15.0, amplitude=1.0), ...)
 
-    Note:
-    :   If `yorder` equals 0, then the profile is constant over \(y\).
-
-polygonal(*xpoints=[]*, *xvalues=[]*)[¶](#polygonal "Link to this definition")
-:   Parameters:
-    :   - **xpoints** – list of the positions of the points
-        - **xvalues** – list of the values of the profile at each point
-
-cosine(*base*, *amplitude=1.*, *xvacuum=0.*, *xlength=None*, *xphi=0.*, *xnumber=1*)[¶](#cosine "Link to this definition")
-:   Parameters:
-    :   - **base** – offset of the profile value
-        - **amplitude** – amplitude of the cosine
-        - **xvacuum** – empty length before starting the profile
-        - **xlength** – length of the profile (default is [`grid_length`](namelist.html#grid_length "grid_length") \(-\) `xvacuum`)
-        - **xphi** – phase offset
-        - **xnumber** – number of periods within `xlength`
-
-polynomial(*x0=0.*, *y0=0.*, *z0=0.*, *order0=[]*, *order1=[]*, *...*)[¶](#polynomial "Link to this definition")
-:   Parameters:
-    :   - **x0****,****y0** – The reference position(s)
-        - **order0** – Coefficient for the 0th order
-        - **order1** – Coefficient for the 1st order (2 coefficients in 2D)
-        - **order2** – Coefficient for the 2nd order (3 coefficients in 2D)
-        - **etc** –
-
-    Creates a polynomial of the form
-
-    \[\begin{split}\begin{eqnarray}
-    &\sum\_i a\_i(x-x\_0)^i & \quad\mathrm{in\, 1D}\\
-    &\sum\_i \sum\_j a\_{ij}(x-x0)^{i-j}(y-y0)^j & \quad\mathrm{in\, 2D}\\
-    &\sum\_i \sum\_j \sum\_k a\_{ijk}(x-x0)^{i-j-k}(y-y0)^j(z-z0)^k & \quad\mathrm{in\, 3D}
-    \end{eqnarray}\end{split}\]
-
-    Each `orderi` is a coefficient (or list of coefficents) associated to the order `i`.
-    In 1D, there is only one coefficient per order. In 2D, each `orderi` is a list
-    of `i+1` coefficients. For instance, the second order has three coefficients
-    associated to \(x^2\), \(xy\) and \(y^2\), respectively.
-    In 3D, each `orderi` is a list of `(i+1)*(i+2)/2` coefficients. For instance,
-    the second order has 6 coefficients associated to \(x^2\), \(xy\), \(xz\),
-    \(y^2\), \(yz\) and \(z^2\), respectively.
-
-**Examples**:
-
+# Polynomial density profile
+Species(..., number_density = polygonal(x_points=[0.0,10.0,20.0], y_values=[0.0,1.0,0.0]), ...)
 ```
-Species( ... , density = gaussian(10., xfwhm=0.3, xcenter=0.8), ... )
-
-ExternalField( ..., profile = constant(2.2), ... )
-```
-
-Illustrations of the pre-defined spatial profiles
-
-![../_images/pythonprofiles.png](../_images/pythonprofiles.png)
 
 ---
 
-## Pre-defined *temporal* profiles[¶](#pre-defined-temporal-profiles "Link to this heading")
+## Profile dimensions
 
-tconstant(*start=0.*)[¶](#tconstant "Link to this definition")
-:   Parameters:
-    :   **start** – starting time
+Profiles accept different numbers of arguments depending on geometry:
+- 1Dcartesian: `f(x)` or `f(x, t)`
+- 2Dcartesian: `f(x, y)` or `f(x, y, t)`
+- 3Dcartesian: `f(x, y, z)` or `f(x, y, z, t)`
+- AMcylindrical: `f(x, r)` or `f(x, r, t)`
 
-ttrapezoidal(*start=0.*, *plateau=None*, *slope1=0.*, *slope2=0.*)[¶](#ttrapezoidal "Link to this definition")
-:   Parameters:
-    :   - **start** – starting time
-        - **plateau** – duration of the plateau (default is [`simulation_time`](namelist.html#simulation_time "simulation_time") \(-\) `start`)
-        - **slope1** – duration of the ramp up
-        - **slope2** – duration of the ramp down
-
-tgaussian(*start=0.*, *duration=None*, *fwhm=None*, *center=None*, *order=2*)[¶](#tgaussian "Link to this definition")
-:   Parameters:
-    :   - **start** – starting time
-        - **duration** – duration of the profile (default is [`simulation_time`](namelist.html#simulation_time "simulation_time") \(-\) `start`)
-        - **fwhm** – gaussian FWHM (default is `duration/3.`)
-        - **center** – gaussian center time (default is in the middle of `duration`)
-        - **order** – order of the gaussian
-
-tpolygonal(*points=[]*, *values=[]*)[¶](#tpolygonal "Link to this definition")
-:   Parameters:
-    :   - **points** – list of times
-        - **values** – list of the values at each time
-
-tcosine(*base=0.*, *amplitude=1.*, *start=0.*, *duration=None*, *phi=0.*, *freq=1.*)[¶](#tcosine "Link to this definition")
-:   Parameters:
-    :   - **base** – offset of the profile value
-        - **amplitude** – amplitude of the cosine
-        - **start** – starting time
-        - **duration** – duration of the profile (default is [`simulation_time`](namelist.html#simulation_time "simulation_time") \(-\) `start`)
-        - **phi** – phase offset
-        - **freq** – frequency
-
-tpolynomial(*t0=0.*, *order0=[]*, *order1=[]*, *...*)[¶](#tpolynomial "Link to this definition")
-:   Parameters:
-    :   - **t0** – The reference position
-        - **order0** – Coefficient for the 0th order
-        - **order1** – Coefficient for the 1st order
-        - **order2** – Coefficient for the 2nd order
-        - **etc** –
-
-    Creates a polynomial of the form \(\sum\_i a\_i(t-t\_0)^i\).
-
-tsin2plateau(*start=0.*, *fwhm=0.*, *plateau=None*, *slope1=fwhm*, *slope2=slope1*)[¶](#tsin2plateau "Link to this definition")
-:   Parameters:
-    :   - **start** – Profile is 0 before start
-        - **fwhm** – Full width half maximum of the profile
-        - **plateau** – Length of the plateau
-        - **slope1** – Duration of the ramp up of the profil
-        - **slope2** – Duration of the ramp down of the profil
-
-    Creates a sin squared profil with a plateau in the middle if needed. If slope1 and 2 are used, fwhm is overwritten.
-
-**Example**:
-
-```
-Antenna( ... , time_profile = tcosine(freq=0.01), ... )
-```
-
-Illustrations of the pre-defined temporal profiles
-
-![../_images/pythonprofiles_t.png](../_images/pythonprofiles_t.png)
+If fewer arguments are given, Smilei does not pass extra dimensions.
 
 ---
 
-## Extract the profile from a file[¶](#extract-the-profile-from-a-file "Link to this heading")
+## Profiles from files
 
-The following profiles may be given directly as an HDF5 file:
+Some profiles can be imported from an external file (available since v4.6). This is useful for complex density distributions computed externally.
 
-- `Species.charge_density`
-- `Species.number_density`
-- `Species.particles_per_cell`
-- `Species.charge`
-- `Species.mean_velocity`
-- `Species.temperature`
-- `ExternalField.profile` except when complex (cylindrical geometry)
+---
 
-You must provide the path to the file, and the path to the dataset
-inside the file.
-For instance `charge_density = "myfile.h5/path/to/dataset"`.
+## Important notes
 
-The targeted dataset located in the file must be an array with
-the same dimension and the same number of cells as the simulation grid.
-
-Warning
-
-For `ExternalField`, the array size must take into account the
-number of ghost cells in each direction. There is also one extra cell
-in specific directions due to the grid staggering (see [this doc](../Understand/algorithms.html#staggeredgrid)).
+- `number_density` and `charge_density` are mutually exclusive
+- Negative profile values are set to 0 for density
+- Position initialization `"random"` is incompatible with density profiles that are 0 at some locations (use `"centered"` or `"regular"` instead)
+- Avoid `NaN` values in your Python profile functions

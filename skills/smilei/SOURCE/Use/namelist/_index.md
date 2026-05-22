@@ -1,46 +1,27 @@
 # Namelist Reference - Index
 
-~100 lines per file. Read only the file(s) relevant to the current task.
+Complete namelist parameter reference. Read only the file(s) relevant to the current task. Each file contains the full official documentation for that topic.
 
-| File | Content | Lines |
-|------|---------|-------|
-| [00_general.md](00_general.md) | Write a namelist | 75 |
-| [01a_grid.md](01a_grid.md) | Main variables | 117 |
-| [01b_patches.md](01b_patches.md) | 01b_patches.md | 84 |
-| [01c_boundaries_pml.md](01c_boundaries_pml.md) | 01c_boundaries_pml.md | 101 |
-| [01d_output.md](01d_output.md) | 01d_output.md | 72 |
-| [02_load_balancing.md](02_load_balancing.md) | Load Balancing | 122 |
-| [03_moving_window.md](03_moving_window.md) | Moving window | 68 |
-| [04_filtering.md](04_filtering.md) | Current filtering | 69 |
-| [05a_basic.md](05a_basic.md) | Species | 123 |
-| [05b_velocity_temp.md](05b_velocity_temp.md) | 05b_velocity_temp.md | 78 |
-| [05c_ionization.md](05c_ionization.md) | 05c_ionization.md | 61 |
-| [05d_radiation1.md](05d_radiation1.md) | 05d_radiation1.md | 71 |
-| [05e_radiation2.md](05e_radiation2.md) | 05e_radiation2.md | 61 |
-| [06_injector.md](06_injector.md) | Particle Injector | 125 |
-| [07_merging.md](07_merging.md) | Particle Merging | 98 |
-| [08a_intro.md](08a_intro.md) | Lasers | 59 |
-| [08b_envelopes.md](08b_envelopes.md) | 08b_envelopes.md | 106 |
-| [08c_planar_gaussian.md](08c_planar_gaussian.md) | 08c_planar_gaussian.md | 99 |
-| [08d2_smoothed2d_lens.md](08d2_smoothed2d_lens.md) | 08d2_smoothed2d_lens.md | 62 |
-| [08d_smoothed2d_basic.md](08d_smoothed2d_basic.md) | 08d_smoothed2d_basic.md | 114 |
-| [08e_smoothed2d_rpp.md](08e_smoothed2d_rpp.md) | 08e_smoothed2d_rpp.md | 131 |
-| [08f2_smoothed3d_rpp.md](08f2_smoothed3d_rpp.md) | 08f2_smoothed3d_rpp.md | 147 |
-| [08f_smoothed3d_basic.md](08f_smoothed3d_basic.md) | 08f_smoothed3d_basic.md | 148 |
-| [08g_am_offset.md](08g_am_offset.md) | 08g_am_offset.md | 138 |
-| [09a_basic.md](09a_basic.md) | Laser envelope model | 114 |
-| [09b_profiles.md](09b_profiles.md) | 09b_profiles.md | 108 |
-| [10_fields_antennas_walls.md](10_fields_antennas_walls.md) | External fields | 152 |
-| [11a_collisions.md](11a_collisions.md) | Collisions & reactions | 139 |
-| [11b_radiation_rr.md](11b_radiation_rr.md) | Radiation reaction | 72 |
-| [11c_breit_wheeler.md](11c_breit_wheeler.md) | Multiphoton Breit-Wheeler | 28 |
-| [12a_scalar.md](12a_scalar.md) | *Scalar* diagnostics | 58 |
-| [12b_fields.md](12b_fields.md) | *Fields* diagnostics | 130 |
-| [12c_probe.md](12c_probe.md) | *Probe* diagnostics | 156 |
-| [12d2_particle_binning_axes.md](12d2_particle_binning_axes.md) | 12d2_particle_binning_axes.md | 123 |
-| [12d_particle_binning_basic.md](12d_particle_binning_basic.md) | *ParticleBinning* diagnostics | 95 |
-| [12e_screen.md](12e_screen.md) | *Screen* diagnostics | 93 |
-| [12f_radiation_spectrum.md](12f_radiation_spectrum.md) | *RadiationSpectrum* diagnostics | 98 |
-| [13_track_perf.md](13_track_perf.md) | *TrackParticles* diagnostics | 163 |
-| [14a_time_profiles.md](14a_time_profiles.md) | Time selections | 47 |
-| [14b_checkpoints_vars.md](14b_checkpoints_vars.md) | Checkpoints | 124 |
+The complete raw namelist page is available at `SMILEI_MANUAL_SOURCE/Use/namelist.md` (6882 lines).
+
+| File | Content | Sections |
+|------|---------|----------|
+| [00_general.md](00_general.md) | General rules, Python workflow | How to structure a namelist, Smilei blocks, Python variables |
+| [01_main.md](01_main.md) | Main variables | `geometry`, `grid_length`, `cell_length`, `number_of_patches`, `timestep`, `simulation_time`, `reference_angular_frequency_SI`, `print_every`, `interpolation_order`, `number_of_pml_cells`, `EM_boundary_conditions`, `random_seed`, `timestep_over_CFL`, `solve_poisson`, `poisson_solver`, `keep_interpolated_fields`, `file_grouping`, `print_expected_disk_usage` |
+| [02_load_balancing.md](02_load_balancing.md) | Load Balancing, SDMD, Vectorization | Dynamic load balancing, multiple domain decomposition, SIMD vectorization |
+| [03_moving_window.md](03_moving_window.md) | Moving window | `number_of_moving_patches`, `time_start`, `velocity_x`, `dir` |
+| [04_filtering.md](04_filtering.md) | Current and Field filtering | Binomial filter, Friedman filter, FIR filter, number of passes |
+| [05_species.md](05_species.md) | Species block | `name`, `mass`, `charge`, `position_initialization`, `momentum_initialization`, `particles_per_cell`, `number_density`, `charge_density`, `temperature`, `mean_velocity`, `boundary_conditions`, `ionization_model`, `radiation_model`, `radiation_quantum_parameter`, `number_of_additional_arguments` |
+| [06_injector_merging.md](06_injector_merging.md) | Particle Injector and Merging | Injector parameters, Vranic merging algorithm, cartesian/spherical momentum discretization |
+| [07_lasers.md](07_lasers.md) | Lasers | `LaserGaussian2D`, `LaserGaussian3D`, `LaserGaussianAM`, `LaserPlaneWave`, `LaserOffset`, time envelopes (`tgaussian`, `tsine`, `ttrapezoidal`, `tcustom`), `box_side`, `a0`, `omega`, `focus`, `waist`, `incidence_angle`, `phase_offset`, `ellipticity` |
+| [08_envelope.md](08_envelope.md) | Laser envelope model | `LaserEnvelope`, envelope equation, ponderomotive force, susceptibility |
+| [09_external_fields.md](09_external_fields.md) | External/Prescribed fields, Antennas, Walls | `ExternalField`, `PrescribedField`, `Antenna`, `Wall` |
+| [10_collisions.md](10_collisions.md) | Collisions & reactions | `Collisions`, `coulomb_log`, `screened_coulomb_log`, collisional ionization, nuclear reactions, `time_frozen` |
+| [11_radiation_qed.md](11_radiation_qed.md) | Radiation reaction, Multiphoton Breit-Wheeler | Niel, Monte-Carlo, Landau-Lifshitz models; `MultiphotonBreitWheeler` |
+| [12a_scalar.md](12a_scalar.md) | Scalar diagnostics | `DiagScalar`, `Ukin`, `Uelm`, `Ubal`, `Urad`, `PoyXmin`, `PoyXminInst`, all scalar quantities |
+| [12b_fields.md](12b_fields.md) | Fields diagnostics | `DiagFields`, `fields`, `every`, `time_average`, `subgrid`, `datatype`, `flush_every` |
+| [12c_probe.md](12c_probe.md) | Probe diagnostics | `DiagProbe`, `fields`, `origin`, `corners`, `number`, `time_integrate`, `PoyX`/`PoyY`/`PoyZ`, `changeField` |
+| [12d_particle_binning.md](12d_particle_binning.md) | ParticleBinning diagnostics | `DiagParticleBinning`, `species`, `axes`, `deposited_quantity`, `average`, `auto` axis limits |
+| [12e_screen_radiation.md](12e_screen_radiation.md) | Screen and RadiationSpectrum | `DiagScreen`, `shape` (`sphere`/`cylinder`), `direction`, `DiagRadiationSpectrum`, `photon_energy_axis` |
+| [12f_track_perf.md](12f_track_perf.md) | TrackParticles, NewParticles, Performances | `DiagTrackParticles`, `filter`, `keep_interpolated_fields`; `DiagNewParticles`; `DiagPerformances`, `cumulative` |
+| [13_time_checkpoint.md](13_time_checkpoint.md) | Time selections, Checkpoints, Variables | `time_selector`, `dump_minutes`, `restart_number`, `restart_files`, Smilei-defined variables (`smilei_omp_threads`, `smilei_total_cores`, `smilei_mpi_rank`, etc.) |

@@ -38,11 +38,11 @@ idx = np.where(timesteps == target)[0][0]   # Correct
 
 ## Field Plotting
 
-Always **transpose** field data before plotting with `imshow`:
-```python
-data = F.getData()  # shape may be (nx, ny) or (ny, nx)
-plt.imshow(data.T)  # transpose for correct orientation
-```
+### Data Layout
+- Smilei Field data layout: **`bz[ix, iy]`** — axis 0 = x, axis 1 = y
+- Shape is `(nx+1, ny+1)` on Yee grid (staggered nodes, +1 from cell count)
+- Use `np.squeeze()` to remove singleton dimensions from `getData()`
+- For `imshow`: transpose to `bz.T` for (y, x) layout expected by matplotlib
 
 ## Matplotlib Backend
 

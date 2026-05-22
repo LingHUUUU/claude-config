@@ -1,5 +1,12 @@
 # Namelist Bootstrap
 
+## 核心原则: 只写公式, 不硬编码数字
+
+- **设计大纲和正式代码中, 所有数值必须通过公式导出, 严禁 magic numbers。**
+- 唯一的例外: 物理学常数 (c, e, m_e, ε₀ 等) 和纯数学常数 (π)。
+- 每个参数旁边用注释标注公式 → 数值, 例如: `dx = Lx / Nx  # = 251.33/1280 = 0.19635 Lr`
+- 好处: 参数可追溯、可验证、修改一处自动传播。
+
 ## Standard Unit Conversion
 
 ```python
@@ -29,38 +36,48 @@ ps = 1.0e-12 / Tr
 
 - Smilei has NO predefined convenience variables (unlike EPOCH's `micron`, `femto`, etc.)
 - Define ALL quantities from first principles — use `um`, `fs`, `ps` conversion factors
-- **No magic numbers**: every physical value should be computable from Python math operations
 - Define SI values first, then convert to Smilei normalized units
 
 ## Grid & Patch Alignment Workflow
 
-**Must follow this definition order** to ensure total cells are divisible by patch count:
+**标准流程: 定义 target_dx → 计算精确 Nx/Ny → 用 `number_of_cells` 传入 Smilei。**
 
 ```python
-# 1. Define spatial extent and target resolution
-Lx = 100.0 * um
-pre_defined_dx = 0.1 * um
+# 1. 定义空间范围和目标分辨率
+Lx = 40.0 * um           # 模拟盒长度
+Ly = 32.0 * um
+target_dx = (1.0/32.0) * um   # 目标格点尺寸
 
-# 2. Define patch count per dimension (must be power of 2)
-number_of_patches = [8]
+# 2. 定义 patch 数 (2 的幂)
+npx, npy = 8, 8
 
-# 3. Calculate cells per patch (round up to fit)
-cells_per_patch = int(Lx / pre_defined_dx / number_of_patches[0]) + 1
+# 3. 计算精确格点数 (整数部分, 保证整除 patch 数)
+Nx = int(Lx / target_dx / npx) * npx
+Ny = int(Ly / target_dx / npy) * npy
 
-# 4. Auto-compute exact cell size and timestep
-dx = Lx / number_of_patches[0] / cells_per_patch
+# 4. 反推精确格点尺寸和步长
+dx = Lx / Nx
+dy = Ly / Ny
 ```
 
-Benefits:
-- Guarantees `Nx % Px == 0` (Smilei hard requirement)
-- Easy to match MPI process count (total patches ≥ MPI ranks)
-- GPU mode: set large `cells_per_patch`, `number_of_patches` = MPI count
+**为什么用 `number_of_cells` 而不是 `cell_length`**:
+- 传入 `cell_length` 时, Smilei 内部做 `cells = grid_length / cell_length`, 浮点精度可能导致格点数漂移 (如 1280.003 → 1281 → 对齐后变 1344)
+- 传入 `number_of_cells` 直接锁死格点数, Smilei 据此反算 cell_length, 无漂移风险
+- Main 块中同时传入 `grid_length` 和 `number_of_cells`, 不传 `cell_length`
 
-### Patch Constraints
-- `number_of_patches` must be power of 2
-- Round `cells_per_patch` up to multiples of 8 for SIMD vectorization
-- Alternative: use `timestep_over_CFL = 0.95` to auto-calculate dt
-- CFL formula for 2D: `dt = 0.95 / sqrt(1/dx^2 + 1/dy^2)`
+```python
+Main(
+    grid_length     = [Lx, Ly],
+    number_of_cells = [Nx, Ny],
+    number_of_patches = [npx, npy],
+    ...
+)
+```
+
+### 约束条件
+- `number_of_patches` 必须是 2 的幂
+- `Nx % npx == 0` 且 `Ny % npy == 0` (由上述公式自动保证)
+- CFL 公式 2D: `dt = 0.95 / sqrt(1/dx^2 + 1/dy^2)`
 
 ## Density Profiles
 

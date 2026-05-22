@@ -46,9 +46,19 @@
 
 ---
 
+## Skill Modification Rules
+
+**Before modifying any file in this skill (SKILL.md, NOTES/, SOURCE/):**
+1. Discuss the proposed change with the user first
+2. Explain what you plan to add, modify, or delete and why
+3. Wait for user approval before making changes
+4. Do NOT unilaterally add or delete content — especially conclusions about physics or numerical behavior
+
+---
+
 ## How to Add Notes
 
 1. Find the right directory under `NOTES/` (or create a new one)
 2. Write a markdown file with `# Title`
 3. Add an entry to the index table above
-4. Keep files focused: one topic per file, ~50-100 lines
+4. Keep files focused: one topic per file. Files can be as long as needed to cover the topic thoroughly — do not artificially limit length at the cost of information loss.
