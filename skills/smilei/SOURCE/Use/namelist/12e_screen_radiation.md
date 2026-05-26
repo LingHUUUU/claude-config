@@ -1,242 +1,96 @@
-## Screen diagnostics[¶](#screen-diagnostics)
+# Screen & RadiationSpectrum Diagnostics
 
-A screen collects data from the macro-particles when they cross a surface.
-It processes this data similarly to the [particle binning diagnostics](#diagparticlebinning)
-as it makes a histogram of the macro-particle properties. There are two differences:
+## Block: DiagScreen
 
--
+### 概述
+当宏粒子穿过指定表面时收集数据，对粒子属性做直方图。与 ParticleBinning 的区别：
+- 仅统计穿过表面的粒子
+- 数据在所有 timestep 上累积
 
-the histogram is made only by the particles that cross the surface
+### 属性速查表
 
--
+| 属性 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| name | str | None | 诊断名称（仅后处理用） |
+| shape | str | 必填 | 表面形状: `"plane"`, `"sphere"`, `"cylinder"` |
+| point | list[float] | 必填 | 定义表面的点: plane 上一点 / sphere 中心 / cylinder 轴上一点。长度 = 模拟维度 |
+| vector | list[float] | 必填 | 定义表面的向量: plane 法向 / sphere 半径 / cylinder 轴（向量模 = 圆柱半径）。长度 = 模拟维度 |
+| direction | str | `"both"` | 计数方向: `"both"` 两侧, `"forward"` 向量方向, `"backward"` 反向, `"canceling"` 反向计为负 |
+| deposited_quantity | -- | 必填 | 与 [ParticleBinning](12d_particle_binning.md) 的 `deposited_quantity` 相同 |
+| every | int / time selection | 必填 | 输出间隔 |
+| flush_every | int / time selection | `1` | 文件刷新间隔。刷新过频繁会严重拖慢模拟 |
+| species | list[str] | 必填 | 一个或多个物种名。所有物种合并到同一诊断 |
+| axes | list | 必填 | 直方图的轴。与 [ParticleBinning](12d_particle_binning.md) 相同，外加: `"a"`/`"b"` (plane: 垂直于 vector 的轴), `"theta"`/`"phi"` (sphere: 相对于 vector 的角度), `"a"`/`"phi"` (cylinder: 轴向和角度) |
 
-the data is accumulated for all timesteps.
-
-You can add a screen by including a block `DiagScreen()` in the namelist,
-for instance:
-
-```
+### 代码示例
+```python
 DiagScreen(
-#name = "my screen",
-shape = "plane",
-point = [5., 10.],
-vector = [1., 0.],
-direction = "canceling",
-deposited_quantity = "weight",
-species = ["electron"],
-axes = [["a", -10.*l0, 10.*l0, 40],
-["px", 0., 3., 30]],
-every = 10
+    shape = "plane",
+    point = [5., 10.],
+    vector = [1., 0.],
+    direction = "canceling",
+    deposited_quantity = "weight",
+    species = ["electron"],
+    axes = [["a", -10.*l0, 10.*l0, 40], ["px", 0., 3., 30]],
+    every = 10
 )
-
 ```
 
-name[¶](#id86)
+---
 
-Optional name of the diagnostic. Used only for post-processing purposes.
+## Block: DiagRadiationSpectrum
 
-shape[¶](#shape)
+### 概述
+计算加速电荷非相干高能光子发射的瞬时功率谱。类似 ParticleBinning 但多一个 binning 轴：发射光子能量。其他轴仍然可用。
 
-The shape of the screen surface: `"plane"`, `"sphere"`, or `"cylinder"`.
+参考：[High-energy photon emission & radiation reaction](../Understand/radiation_loss.html)
 
-point[¶](#point)
+### 属性速查表
 
-Type:
+| 属性 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| name | str | None | 诊断名称（仅后处理用） |
+| every | int / time selection | 必填 | 输出间隔 |
+| flush_every | int / time selection | `1` | 文件刷新间隔 |
+| time_average | int | `1` | 输出前数据平均的 timestep 数 |
+| species | list[str] | 必填 | 发射辐射的物种名列表 |
+| photon_energy_axis | list | 必填 | 光子能量轴: `[min, max, nsteps, "logscale"]`（单位 \(m_e c^2\)） |
+| axes | list | `[]` | 额外 binning 轴，语法同 [ParticleBinning](12d_particle_binning.md) |
 
-A list of floats `[X]` in 1D,  `[X,Y]` in 2D,  `[X,Y,Z]` in 3D
+### 示例
 
-The coordinates of a point that defines the screen surface:
-a point of the `"plane"`, the center of the `"sphere"`,
-or a point on the `"cylinder"` axis.
-
-vector[¶](#vector)
-
-Type:
-
-A list of floats `[X]` in 1D,  `[X,Y]` in 2D,  `[X,Y,Z]` in 3D
-
-The coordinates of a vector that defines the screen surface:
-the normal to the `"plane"`, a radius of the `"sphere"`.
-or the axis of the `"cylinder"` (in the latter case, the vector
-norm defines the cylinder radius).
-
-direction[¶](#id87)
-
-Default:
-
-`"both"`
-
-Determines how particles are counted depending on which side of the screen they come from.
-
--
-
-`"both"` to account for both sides.
-
--
-
-`"forward"` for only the ones in the direction of the `vector`.
-
--
-
-`"backward"` for only the ones in the opposite direction.
-
--
-
-`"canceling"` to count negatively the ones in the opposite direction.
-
-deposited_quantity[¶](#id88)
-
-Identical to the `deposited_quantity` of [particle binning diagnostics](#diagparticlebinning).
-
-every[¶](#id89)
-
-The number of time-steps between each output, or a [time selection](#timeselections).
-
-flush_every[¶](#id90)
-
-Default:
-
-1
-
-Number of timesteps or a [time selection](#timeselections).
-
-When `flush_every` coincides with `every`, the output
-file is actually written (“flushed” from the buffer). Flushing
-too often can dramatically slow down the simulation.
-
-species[¶](#id91)
-
-A list of one or several species’ [`name`](#id93).
-All these species are combined into the same diagnostic.
-
-axes[¶](#id92)
-
-A list of “axes” that define the grid of the histogram.
-It is identical to that of [particle binning diagnostics](#diagparticlebinning), with the
-addition of four types of axes:
-
--
-
-If `shape="plane"`, then `"a"` and `"b"` are the axes perpendicular to the `vector`.
-
--
-
-If `shape="sphere"`, then `"theta"` and `"phi"` are the angles with respect to the `vector`.
-
--
-
-If `shape="cylinder"`, then `"a"` is along the cylinder axis and `"phi"` is the angle around it.
-
-## RadiationSpectrum diagnostics[¶](#radiationspectrum-diagnostics)
-
-A radiation spectrum diagnostic computes (at a given time) the instantaneous
-power spectrum following from the incoherent emission of high-energy
-photons by accelerated charge (see [High-energy photon emission & radiation reaction](../Understand/radiation_loss.html) for more details
-on the emission process and its implementation in Smilei).
-
-It is similar to the [particle binning diagnostics](#diagparticlebinning),
-with an extra axis of binning: the emitted photon energy.
-The other axes remain available to the user.
-
-A radiation spectrum diagnostic is defined by a block `RadiationSpectrum()`:
-
-```
+**全模拟时长积分：**
+```python
 DiagRadiationSpectrum(
-#name = "my radiation spectrum",
-every = 5,
-flush_every = 1,
-time_average = 1,
-species = ["electrons1", "electrons2"],
-photon_energy_axis = [0., 1000., 100, 'logscale'],
-axes = []
+    every = Nt,
+    time_average = Nt,
+    species = ["electrons"],
+    photon_energy_axis = [0., 1000., 100, 'logscale'],
+    axes = []
 )
-
 ```
 
-name[¶](#id93)
-
-Optional name of the diagnostic. Used only for post-processing purposes.
-
-every[¶](#id94)
-
-The number of time-steps between each output, or a [time selection](#timeselections).
-
-flush_every[¶](#id95)
-
-Default:
-
-1
-
-Number of timesteps or a [time selection](#timeselections).
-
-When `flush_every` coincides with `every`, the output
-file is actually written (“flushed” from the buffer). Flushing
-too often can dramatically slow down the simulation.
-
-time_average[¶](#id96)
-
-Default:
-
-1
-
-The number of time-steps during which the data is averaged before output.
-
-species[¶](#id97)
-
-A list of one or several species’ [`name`](#id93) that emit the radiation.
-All these species are combined into the same diagnostic.
-
-photon_energy_axis[¶](#photon_energy_axis)
-
-The axis of photon energies (in units of \(m_e c^2\)).
-The syntax is similar to that of
-[particle binning diagnostics](#diagparticlebinning).
-
-Syntax: `[min, max, nsteps, "logscale"]`
-
-axes[¶](#id98)
-
-An additional list of “axes” that define the grid.
-There may be as many axes as wanted (there may be zero axes).
-Their syntax is the same that for “axes” of a
-[particle binning diagnostics](#diagparticlebinning).
-
-Examples of radiation spectrum diagnostics
-
--
-
-Time-integrated over the full duration of the simulation:
-
-```
-DiagRadiationSpectrum(
-every = Nt,
-time_average = Nt,
-species = ["electrons"],
-photon_energy_axis = [0., 1000., 100, 'logscale'],
-axes = []
-)
-
-```
-
--
-
-Angularly-resolved instantaneous radiation spectrum.
-The diagnostic considers that all electrons emit radiation in
-the direction of their velocity:
-
-```
+**角分辨瞬时辐射谱（假设所有电子沿速度方向发射）：**
+```python
 from numpy import arctan2, pi
-
 def angle(p):
-return arctan2(p.py,p.px)
+    return arctan2(p.py, p.px)
 
 DiagRadiationSpectrum(
-every = 10,
-species = ["electrons"],
-photon_energy_axis = [0., 1000., 100, 'logscale'],
-axes = [
-[angle,-pi,pi,90]
-]
+    every = 10,
+    species = ["electrons"],
+    photon_energy_axis = [0., 1000., 100, 'logscale'],
+    axes = [[angle, -pi, pi, 90]]
 )
+```
 
+### 代码示例
+```python
+DiagRadiationSpectrum(
+    every = 5,
+    time_average = 1,
+    species = ["electrons1", "electrons2"],
+    photon_energy_axis = [0., 1000., 100, 'logscale'],
+    axes = []
+)
 ```

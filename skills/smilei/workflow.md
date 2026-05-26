@@ -60,8 +60,6 @@ Technical content that stays in English: Python code (`input.py`), shell scripts
 1. Run `squeue` to check cluster load and available nodes
 2. Adjust `#SBATCH` parameters (nodes, ntasks-per-node, time) based on resource estimate from Stage 1 and current cluster availability
 3. Write `submit_array.job` (or `submit.sh` for a single run), following NOTES/slurm/ patterns
-4. `sbatch submit_array.job` — record the job ID
-5. **Exit the task.** Inform user of job ID and estimated completion time. The user will restart the conversation when the simulation is done.
 
 **Deliverable**: `submit_array.job` (submitted), job ID recorded
 
@@ -72,13 +70,9 @@ Technical content that stays in English: Python code (`input.py`), shell scripts
 **Goal**: Analyze simulation output and verify physical results.
 
 **Steps**:
-1. Verify output file integrity in `data/`: Fields*.h5 present, check scalars.txt for energy conservation
+1. Verify output file integrity in `data/`
 2. Check simulation log for warnings or errors
 3. Complete `post/post.ipynb`: add analysis cells for each verification item from the design outline, generate plots to `result/`
-4. Run all cells and verify:
-   - Key physical quantities match expectations (within reasonable tolerance)
-   - No numerical artifacts (boundary reflections, self-heating, etc.)
-5. If any issue is found, document it in the relevant NOTES/ file for future reference
 
 **Deliverable**: `post/post.ipynb` (completed), plots in `result/`
 
@@ -110,6 +104,7 @@ Technical content that stays in English: Python code (`input.py`), shell scripts
 │   └── input.py            # Stage 2
 ├── post/
 │   └── post.ipynb          # Stage 2 & 4
+|   └── result/
 ├── submit_array.job        # Stage 3
 ├── result/                 # Stage 4 output
 └── report.md               # Stage 5

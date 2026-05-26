@@ -1,526 +1,155 @@
-## Species[¶](#species)
-
-Each species has to be defined in a `Species` block:
-
-```
-Species(
-name      = "electrons1",
-position_initialization = "random",
-momentum_initialization = "maxwell-juettner",
-regular_number = [],
-particles_per_cell = 100,
-mass = 1.,
-atomic_number = None,
-#maximum_charge_state = None,
-number_density = 10.,
-# charge_density = None,
-charge = -1.,
-mean_velocity = [0.],
-#mean_velocity_AM = [0.],
-temperature = [1e-10],
-boundary_conditions = [
-["reflective", "reflective"],
-#    ["periodic", "periodic"],
-#    ["periodic", "periodic"],
-],
-# thermal_boundary_temperature = None,
-# thermal_boundary_velocity = None,
-time_frozen = 0.0,
-# ionization_model = "none",
-# ionization_electrons = None,
-# ionization_rate = None,
-is_test = False,
-pusher = "boris",
+# Species
+
+## Block: Species
+
+### 概述
+定义粒子物种。每种粒子需一个独立的 `Species` block。支持电子、离子、光子物种，以及丰富的物理模块（电离、辐射、QED 对产生、粒子合并等）。
+
+---
+
+### 属性速查表
+
+#### 基本属性
+
+| 属性 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| name | str | 必填 | 物种名称。须多于 1 字符，不能以 `"m_"` 开头 |
+| mass | float | 必填 | 粒子质量 (\(m_e\))。光子为 0 |
+| charge | float / profile | 必填 | 粒子电荷 (\(e\)) |
+| atomic_number | int | `0` | 原子序数（≤ 100）。电离和核反应必需。在碰撞中考虑原子屏蔽效应（离子设为 0 则视为完全电离） |
+| maximum_charge_state | int | `0` | `ionization_model="from_rate"` 时的最大电荷态 |
+| is_test | bool | `False` | 测试粒子标志。`True` 则粒子不参与电荷和电流 |
+| pusher | str | `"boris"` | 推进器类型（见下方） |
+
+#### 位置初始化
+
+| 属性 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| position_initialization | str/array/file | 必填 | `"regular"` / `"random"` / `"centered"` (不支持AM) / 另一物种 `name` (复制位置) / numpy array / HDF5 文件路径 |
+| regular_number | list[int] | 自动 | `position_initialization="regular"` 时每方向每 cell 的粒子数: `[Nx, Ny, Nz]`（AM: `[Nx, Nr, Ntheta]`，推荐 Ntheta ≥ 4×(number_of_AM-1)）。未设时 particles_per_cell 须为模拟维度的幂 |
+
+#### 动量初始化
+
+| 属性 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| momentum_initialization | str/array/file | 必填 | `"maxwell-juettner"` (相对论 Maxwellian) / `"rectangular"` / `"cold"` (零温) / numpy array / HDF5 文件 |
+| mean_velocity | list[3] / profile | 必填 | 初始漂移速度 (\(c\))。**无质量粒子时此为动量 (\(m_e c\))** |
+| mean_velocity_AM | list[3] / profile | 仅 AM | 纵向/径向/角向的初始漂移速度 (\(c\))。与 `mean_velocity` 二选一。**无质量粒子时为动量。警告：应用于每个粒子可能计算量较大** |
+| temperature | list[3] / profile | `1e-10` | 初始温度 (\(m_e c^2\)) |
+
+#### 密度与粒子数
+
+| 属性 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| particles_per_cell | float / profile | 必填 | 每 cell 粒子数 |
+| number_density | float / profile | 与 charge_density 二选一 | 数密度绝对值 (\(N_r\)) |
+| charge_density | float / profile | 与 number_density 二选一 | 电荷密度绝对值 |
+
+#### 边界条件
+
+| 属性 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| boundary_conditions | list[list[str]] | `[["periodic"]]` | `"periodic"`, `"reflective"`, `"remove"` (删除), `"stop"` (动量归零), `"thermalize"`。光子 (mass=0) 不支持后两种。语法同 EM_boundary_conditions |
+| thermal_boundary_temperature | list[float] | None | 热边界（BC=`"thermalize"`）的温度。当前仅 x 方向生效 |
+| thermal_boundary_velocity | list[float] | `[]` | 热边界后粒子的漂移速度分量 |
+
+#### 冻结
+
+| 属性 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| time_frozen | float | 必填 | 粒子冻结时间 (\(T_r\))。冻结粒子不动、不产生电流，但产生电荷密度；可被电离。比非冻结粒子计算量小得多 |
+
+#### 场电离
+
+| 属性 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| ionization_model | str | `"none"` | `"tunnel"` (PPT-ADK), `"tunnel_full_PPT"` (实验性，含磁量子数), `"tunnel_envelope_averaged"` (激光包络), `"from_rate"` (用户定义速率，需 maximum_charge_state)。前三种需 atomic_number |
+| bsi_model | str | `"none"` | Barrier Suppression Ionization 修正: `"Tong_Lin"`, `"KAG"`。仅支持 `ionization_model="tunnel"` 或 `"tunnel_full_PPT"` |
+| ionization_rate | Python function | 必填（from_rate 模式） | 用户定义的电离速率函数 |
+| ionization_electrons | str | 必填（电离启用时） | 接收电离新生电子的电子物种名 |
+
+#### 辐射反应
+
+| 属性 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| radiation_model | str | `"none"` | `"Landau-Lifshitz"`/`"ll"` (高能近似), `"corrected-Landau-Lifshitz"`/`"cll"` (含量子修正), `"Niel"` (随机辐射模型), `"Monte-Carlo"`/`"mc"` (MC 辐射模型，可生成宏光子)。**光子 (mass=0) 不可用** |
+| radiation_photon_species | str | None | Monte-Carlo 模型生成宏光子的目标光子物种名。光子物种 mass=0，须在 namelist 中定义于辐射物种之后。**光子不可用** |
+| radiation_photon_sampling | int | `1` | 每次发射事件生成的宏光子数（总权重守恒）。大值可能严重拖慢性能 |
+| radiation_max_emissions | int | `10` | 每个宏粒子每 timestep 最多发射 MC 事件数。用于缓冲区分配，高值可能耗尽内存。**光子不可用** |
+| radiation_photon_gamma_threshold | float | `2` | 宏光子能量阈值 (\(m_e c^2\))。低于此值不生成宏光子但计入能量平衡。默认值 = 2 倍电子静止能量（衰变成电子-正电子对所需能量）。**光子不可用** |
+
+#### 其他物理
+
+| 属性 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| relativistic_field_initialization | bool | `False` | 相对论场初始化。`True` 则在 `time_frozen` 时刻将该物种的电磁场加入模拟。推荐将该物种与其他物种远离放置以避免瞬时非物理力 |
+| multiphoton_Breit_Wheeler | list[2] | `[None, None]` | 通过多光子 BW 对产生创建的 [电子物种名, 正电子物种名]。**仅光子 (mass=0) 可用** |
+| multiphoton_Breit_Wheeler_sampling | list[2] | `[1, 1]` | 每次光子衰变生成的 [电子数, 正电子数]（总权重守恒）。**仅光子可用** |
+| keep_interpolated_fields | list[str] | `[]` | 存储在内存中的插值场: `"Ex"`, `"Ey"`, `"Ez"`, `"Bx"`, `"By"`, `"Bz"`。可被 ParticleBinning 和 TrackParticles 诊断访问。磁场来自插值器，相比 Fields 诊断有半个 timestep 偏移。额外: `"Wx"`, `"Wy"`, `"Wz"` (时间累积的各电场分量做功) |
+
+### `pusher` 选项
+
+| 值 | 说明 |
+|----|------|
+| `"boris"` | 相对论 Boris 推进器（默认） |
+| `"borisnr"` | 非相对论 Boris 推进器 |
+| `"vay"` | J. L. Vay 相对论推进器 |
+| `"higueracary"` | Higuera-Cary 相对论推进器 |
+| `"norm"` | 仅光子：匀速直线传播 |
+| `"ponderomotive_boris"` | 激光包络模型用的修正 Boris 推进器（需质量非零） |
+| `"borisBTIS3"` | Boris + B-TIS3 插值 B 场。须 `use_BTIS3_interpolation=True` |
+| `"ponderomotive_borisBTIS3"` | 同上 + 包络模型。须 `use_BTIS3_interpolation=True` |
 
-# Radiation reaction, for particles only:
-radiation_model = "none",
-radiation_photon_species = "photon",
-radiation_photon_sampling = 1,
-radiation_photon_gamma_threshold = 2,
-radiation_max_emissions = 10,
+### `position_initialization` 选项
 
-# Relativistic field initialization:
-relativistic_field_initialization = "False",
+| 值 | 说明 |
+|----|------|
+| `"regular"` | 均匀分布，由 `regular_number` 控制 |
+| `"random"` | 随机分布 |
+| `"centered"` | 每个 cell 中心（不支持 AMcylindrical） |
+| 另一物种名 | 复制目标物种的位置（目标须使用上述三种方法之一，且须先定义） |
+| numpy array / HDF5 | 详见 [Particle initialization](particle_initialization.html) |
 
-# For photon species only:
-multiphoton_Breit_Wheeler = ["electron","positron"],
-multiphoton_Breit_Wheeler_sampling = [1,1]
+### `momentum_initialization` 选项
 
-# Merging
-merging_method = "vranic_spherical",
-merge_every = 5,
-merge_min_particles_per_cell = 16,
-merge_max_packet_size = 4,
-merge_min_packet_size = 4,
-merge_momentum_cell_size = [16,16,16],
-)
+| 值 | 说明 |
+|----|------|
+| `"maxwell-juettner"` | 相对论 Maxwellian 分布（依赖 `temperature`） |
+| `"rectangular"` | 矩形分布（依赖 `temperature`） |
+| `"cold"` | 零温 |
+| numpy array / HDF5 | 详见 [Particle initialization](particle_initialization.html) |
 
-```
+### `ionization_rate` 函数规范
 
-name[¶](#name)
+函数接受一个 `particles` 参数，具有属性 `x`, `y`, `z`, `px`, `py`, `pz`, `charge`, `weight`, `id`（均为 numpy array）。须返回同形状的 numpy array。
 
-The name you want to give to this species.
-It should be more than one character and can not start with `"m_"`.
-
-position_initialization[¶](#position_initialization)
-
-The method for initialization of particle positions. Options are:
-
--
-
-`"regular"` for regularly spaced. See [`regular_number`](#id18).
-
--
-
-`"random"` for randomly distributed.
-
--
-
-`"centered"` for centered in each cell (not supported in `AMcylindrical` geometry.
-
--
-
-The [`name`](#id93) of another species from which the positions are copied.
-The source species must have positions initialized using one of the three
-other options above, and must be defined before this species.
-
--
-
-A numpy array or an HDF5 file defining all the positions of the particles.
-In this case you must also provide the weight of each particle (see [Macro-particle weights](../Understand/units.html#weights)).
-See [Initialize particles from an array or a file](particle_initialization.html).
-
-regular_number[¶](#regular_number)
-
-Type:
-
-A list of as many integers as the simulation dimension
-
-When `position_initialization = "regular"`, this sets the number of evenly-spaced
-particles per cell in each direction: `[Nx, Ny, Nz]` in cartesian geometries and
-`[Nx, Nr, Ntheta]` in `AMcylindrical` in which case we recommend
-`Ntheta` \(\geq 4\times (\) `number_of_AM` \(-1)\).
-If unset, `particles_per_cell` must be a power of the simulation dimension,
-for instance, a power of 2 in `2Dcartesian`.
-
-momentum_initialization[¶](#momentum_initialization)
-
-The method for initialization of particle momenta. Options are:
-
--
-
-`"maxwell-juettner"` for a relativistic maxwellian (see [how it is done](maxwell-juttner.html))
-
--
-
-`"rectangular"` for a rectangular distribution
-
--
-
-`"cold"` for zero temperature
-
--
-
-A numpy array or an HDF5 file defining all the momenta of the particles.
-See [Initialize particles from an array or a file](particle_initialization.html).
-
-The first 2 distributions depend on the parameter [`temperature`](#id14) explained below.
-
-particles_per_cell[¶](#particles_per_cell)
-
-Type:
-
-float or [profile](profiles.html)
-
-The number of particles per cell.
-
-mass[¶](#mass)
-
-The mass of particles, in units of the electron mass \(m_e\).
-
-atomic_number[¶](#atomic_number)
-
-Default:
-
-0
-
-The atomic number of the particles (must be below 101).
-It is required for ionization and nuclear reactions.
-It has an effect on collisions by accounting for the atomic screening
-(if not defined, or set to 0 for ions, screening is discarded as if
-the ion was fully ionized).
-
-maximum_charge_state[¶](#maximum_charge_state)
-
-Default:
-
-0
-
-The maximum charge state of a species for which the ionization model is `"from_rate"`.
-
-number_density[¶](#number_density)
-
-charge_density[¶](#charge_density)
-
-Type:
-
-float or [profile](profiles.html)
-
-The absolute value of the charge density or number density (choose one only)
-of the particle distribution, in units of the reference density \(N_r\) (see [Units](../Understand/units.html)).
-
-charge[¶](#charge)
-
-Type:
-
-float or [profile](profiles.html)
-
-The particle charge, in units of the elementary charge \(e\).
-
-mean_velocity[¶](#mean_velocity)
-
-Type:
-
-a list of 3 floats or [profiles](profiles.html)
-
-The initial drift velocity of the particles, in units of the speed of light \(c\), in the x, y and z directions.
-
-WARNING: For massless particles, this is actually the momentum in units of \(m_e c\).
-
-mean_velocity_AM[¶](#mean_velocity_AM)
-
-Type:
-
-a list of 3 floats or [profiles](profiles.html)
-
-The initial drift velocity of the particles, in units of the speed of light \(c\), in the longitudinal, radial and azimuthal directions.
-This entry is available only in `AMcylindrical` velocity and cannot be used if also `mean_velocity` is used in the same `Species`: only one of the two can be chosen.
-
-WARNING: For massless particles, this is actually the momentum in units of \(m_e c\).
-
-WARNING: The initial cylindrical drift velocity is applied to each particle, thus it can be computationally demanding.
-
-temperature[¶](#temperature)
-
-Type:
-
-a list of 3 floats or [profiles](profiles.html)
-
-Default:
-
-`1e-10`
-
-The initial temperature of the particles, in units of \(m_ec^2\).
-
-boundary_conditions[¶](#boundary_conditions)
-
-Type:
-
-a list of lists of strings
-
-Default:
-
-`[["periodic"]]`
-
-The boundary conditions for the particles of this species.
-Each boundary may have one of the following conditions:
-`"periodic"`, `"reflective"`, `"remove"` (particles are deleted),
-`"stop"` (particle momenta are set to 0), and `"thermalize"`.
-For photon species (`mass=0`), the last two options are not available.
-
-Syntax 1: `[[bc_all]]`, identical for all boundaries.
-Syntax 2: `[[bc_X], [bc_Y], ...]`, different depending on x, y or z.
-Syntax 3: `[[bc_Xmin, bc_Xmax], ...]`,  different on each boundary.
-
-thermal_boundary_temperature[¶](#thermal_boundary_temperature)
-
-Default:
-
-None
-
-A list of floats representing the temperature of the thermal boundaries (those set to
-`"thermalize"` in  [`boundary_conditions`](#boundary_conditions)) for each spatial coordinate.
-Currently, only the first coordinate (x) is taken into account.
-
-thermal_boundary_velocity[¶](#thermal_boundary_velocity)
-
-Default:
-
-[]
-
-A list of floats representing the components of the particles’ drift velocity after
-encountering the thermal boundaries (those set to `"thermalize"` in [`boundary_conditions`](#boundary_conditions)).
-
-time_frozen[¶](#time_frozen)
-
-Default:
-
--
-
-The time during which the particles are “frozen”, in units of \(T_r\).
-Frozen particles do not move and therefore do not deposit any current density either.
-Nonetheless, they deposit a charge density.
-They are computationally much cheaper than non-frozen particles and oblivious to any EM-fields
-in the simulation. Note that frozen particles can be ionized (this is computationally much cheaper
-if ion motion is not relevant).
-
-ionization_model[¶](#ionization_model)
-
-Default:
-
-`"none"`
-
-The model for [field ionization](../Understand/ionization.html#field-ionization):
-
--
-
-`"tunnel"` for tunnel ionization using [PPT-ADK](../Understand/ionization.html#ppt-adk) (requires species with an [`atomic_number`](#atomic_number))
-
--
-
-`"tunnel_full_PPT"` experimental for tunnel ionization using [PPT-ADK with account for magnetic number](../Understand/ionization.html#ppt-adk) (requires species with an [`atomic_number`](#atomic_number))
-
--
-
-`"tunnel_envelope_averaged"` for [field ionization with a laser envelope](../Understand/ionization.html#field-ionization-envelope)
-
--
-
-`"from_rate"`, relying on a [user-defined ionization rate](../Understand/ionization.html#rate-ionization) (requires species with a [`maximum_charge_state`](#maximum_charge_state)).
-
-bsi_model[¶](#bsi_model)
-
-Default:
-
-`"none"`
-
-Apply the [Barrier Suppression Ionization](../Understand/ionization.html#barrier-suppression) correction for ionization in strong fields.
-This correction is supported only for `ionization_model` = `"tunnel"` or `tunnel_full_PPT`.
-The available BSI models are:
-
--
-
-`"Tong_Lin"` for [Tong and Lin](../Understand/ionization.html#tong-lin)’s rate.
-
--
-
-`"KAG"` for [Kostyukov Artemenko Golovanov](../Understand/ionization.html#kag)’s rate.
-
-ionization_rate[¶](#ionization_rate)
-
-A python function giving the user-defined ionisation rate as a function of various particle attributes.
-To use this option, the [numpy package](http://www.numpy.org/) must be available in your python installation.
-The function must have one argument, that you may call, for instance, `particles`.
-This object has several attributes `x`, `y`, `z`, `px`, `py`, `pz`, `charge`, `weight` and `id`.
-Each of these attributes are provided as numpy arrays where each cell corresponds to one particle.
-
-The following example defines, for a species with maximum charge state of 2,
-an ionization rate that depends on the initial particle charge
-and linear in the x coordinate:
-
-```
+```python
 from numpy import exp, zeros_like
 
 def my_rate(particles):
-rate = zeros_like(particles.x)
-charge_0 = (particles.charge==0)
-charge_1 = (particles.charge==1)
-rate[charge_0] = r0 * particles.x[charge_0]
-rate[charge_1] = r1 * particles.x[charge_1]
-return rate
+    rate = zeros_like(particles.x)
+    charge_0 = (particles.charge == 0)
+    charge_1 = (particles.charge == 1)
+    rate[charge_0] = r0 * particles.x[charge_0]
+    rate[charge_1] = r1 * particles.x[charge_1]
+    return rate
 
-Species( ..., ionization_rate = my_rate )
-
+Species(..., ionization_rate=my_rate)
 ```
 
-ionization_electrons[¶](#ionization_electrons)
-
-The name of the electron species that [`ionization_model`](#ionization_model) uses when creating new electrons.
-
-is_test[¶](#is_test)
-
-Default:
-
-`False`
-
-Flag for test particles. If `True`, this species will contain only test particles
-which do not participate in the charge and currents.
-
-pusher[¶](#pusher)
-
-Default:
-
-`"boris"`
-
-Type of pusher to be used for this species. Options are:
-
--
-
-`"boris"`: The relativistic Boris pusher
-
--
-
-`"borisnr"`: The non-relativistic Boris pusher
-
--
-
-`"vay"`: The relativistic pusher of J. L. Vay
-
--
-
-`"higueracary"`: The relativistic pusher of A. V. Higuera and J. R. Cary
-
--
-
-`"norm"`:  For photon species only (rectilinear propagation)
-
--
-
-`"ponderomotive_boris"`: modified relativistic Boris pusher for species interacting with the laser envelope model. Valid only if the species has non-zero mass
-
--
-
-`"borisBTIS3"`: as `"boris"`, but using B fields interpolated with the B-TIS3 scheme.
-
--
-
-`"ponderomotive_borisBTIS3"`: as `"ponderomotive_boris"`, but using B fields interpolated with the B-TIS3 scheme.
-
-WARNING: `"borisBTIS3"` and `"ponderomotive_borisBTIS3"` can be used only when `use_BTIS3_interpolation=True` in the `Main` block.
-
-radiation_model[¶](#radiation_model)
-
-Default:
-
-`"none"`
-
-The radiation reaction model used for this species (see [High-energy photon emission & radiation reaction](../Understand/radiation_loss.html)).
-
--
-
-`"none"`: no radiation
-
--
-
-`"Landau-Lifshitz"` (or `ll`): Landau-Lifshitz model approximated for high energies
-
--
-
-`"corrected-Landau-Lifshitz"` (or `cll`): with quantum correction
-
--
-
-`"Niel"`: a [stochastic radiation model](https://arxiv.org/abs/1707.02618) based on the work of Niel et al..
-
--
-
-`"Monte-Carlo"` (or `mc`): Monte-Carlo radiation model. This model can be configured to generate macro-photons with [`radiation_photon_species`](#radiation_photon_species).
-
-This parameter cannot be assigned to photons (mass = 0).
-
-Radiation is emitted only with the `"Monte-Carlo"` model when
-[`radiation_photon_species`](#radiation_photon_species) is defined.
-
-radiation_photon_species[¶](#radiation_photon_species)
-
-The [`name`](#id93) of the photon species in which the Monte-Carlo [`radiation_model`](#radiation_model)
-will generate macro-photons. If unset (or `None`), no macro-photon will be created.
-The target photon species must be have its mass set to 0, and appear after the
-particle species in the namelist.
-
-This parameter cannot be assigned to photons (mass = 0).
-
-radiation_photon_sampling[¶](#radiation_photon_sampling)
-
-Default:
-
-`1`
-
-The number of macro-photons generated per emission event, when the macro-photon creation
-is activated (see [`radiation_photon_species`](#radiation_photon_species)). The total macro-photon weight
-is still conserved.
-
-A large number may rapidly slow down the performances and lead to memory saturation.
-
-This parameter cannot be assigned to photons (mass = 0).
-
-radiation_max_emissions[¶](#radiation_max_emissions)
-
-Default:
-
-`10`
-
-The maximum number of emission Monte-Carlo event a macro-particle can undergo during a timestep.
-Since this value is used to allocate some buffers, a high value can saturate memory.
-
-This parameter cannot be assigned to photons (mass = 0).
-
-radiation_photon_gamma_threshold[¶](#radiation_photon_gamma_threshold)
-
-Default:
-
-`2`
-
-The threshold on the photon energy for the macro-photon emission when using the
-radiation reaction Monte-Carlo process.
-Under this threshold, the macro-photon from the radiation reaction Monte-Carlo
-process is not created but still taken into account in the energy balance.
-The default value corresponds to twice the electron rest mass energy that
-is the required energy to decay into electron-positron pairs.
-
-This parameter cannot be assigned to photons (mass = 0).
-
-relativistic_field_initialization[¶](#relativistic_field_initialization)
-
-Default:
-
-`False`
-
-Flag for relativistic particles. If `True`, the electromagnetic fields of this species will added to the electromagnetic fields already present in the simulation.
-This operation will be performed when time equals [`time_frozen`](#id71). See [Field initialization for relativistic species](../Understand/relativistic_fields_initialization.html) for details on the computation of the electromagentic fields of a relativistic species.
-To have physically meaningful results, we recommend to place a species which requires this method of field initialization far from other species, otherwise the latter could experience instantly turned-on unphysical forces by the relativistic species’ fields.
-
-multiphoton_Breit_Wheeler[¶](#multiphoton_Breit_Wheeler)
-
-Default:
-
-`[None,None]`
-
-An list of the [`name`](#id93) of two species: electrons and positrons created through
-the [Multiphoton Breit-Wheeler pair creation](../Understand/multiphoton_Breit_Wheeler.html).
-By default, the process is not activated.
-
-This parameter can only be assigned to photons species (mass = 0).
-
-multiphoton_Breit_Wheeler_sampling[¶](#multiphoton_Breit_Wheeler_sampling)
-
-Default:
-
-`[1,1]`
-
-A list of two integers: the number of electrons and positrons generated per photon decay
-in the [Multiphoton Breit-Wheeler pair creation](../Understand/multiphoton_Breit_Wheeler.html). The total macro-particle weight is still
-conserved.
-
-Large numbers may rapidly slow down the performances and lead to memory saturation.
-
-This parameter can only be assigned to photons species (mass = 0).
-
-keep_interpolated_fields[¶](#keep_interpolated_fields)
-
-Default:
-
-`[]`
-
-A list of interpolated fields that should be stored in memory for all particles of this species,
-instead of being located in temporary buffers. These fields can then
-be accessed in some diagnostics such as [particle binning](#diagparticlebinning) or
-[tracking](#diagtrackparticles). The available fields are `"Ex"`, `"Ey"`, `"Ez"`,
-`"Bx"`, `"By"` and `"Bz"`.
-
-Note that magnetic field components, as they originate from the interpolator,
-are shifted by half a timestep compared to those from the Fields diagnostics.
-
-Additionally, the work done by each component of the electric field is available as
-`"Wx"`, `"Wy"` and `"Wz"`. Contrary to the other interpolated fields, these quantities
-are accumulated over time.
+### 代码示例
+```python
+Species(
+    name = "electron",
+    position_initialization = "random",
+    momentum_initialization = "maxwell-juettner",
+    particles_per_cell = 64,
+    mass = 1.0,
+    charge = -1.0,
+    number_density = 0.01,
+    temperature = [0.001],
+    boundary_conditions = [["remove", "remove"], ["remove", "remove"]],
+    time_frozen = 0.0,
+    pusher = "boris",
+)
+```

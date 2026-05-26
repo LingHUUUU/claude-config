@@ -1,83 +1,31 @@
-## Moving window[¶](#moving-window)
+# Moving Window
 
-The simulated domain can move relatively to its the initial position. The “moving window”
-is (almost) periodically shifted in the `x_max` direction.
-Each “shift” consists in removing a column of patches from the `x_min` border and
-adding a new one after the `x_max` border, thus changing the physical domain that the
-simulation represents but keeping the same box size. This is particularly useful to
-follow waves or plasma moving at high speed.
-The frequency of the shifts is adjusted so that the average displacement velocity
-over many shifts matches the velocity given by the user.
-The user may ask for a given number of additional shifts at a given time.
-These additional shifts are not taken into account for the evaluation of the average
-velocity of the moving window.
+## Block: MovingWindow
 
-The block `MovingWindow` is optional. The window does not move it you do not define it.
+### 概述
+模拟窗口可跟随等离子体或波高速移动。通过在 `x_max` 方向周期性移除 `x_min` 边界处的 patch 并在 `x_max` 后添加新 patch，保持 box 大小不变但改变物理域。窗口移动频率自动调整以匹配用户指定的平均速度。
 
-Warning
+该 block 是可选的。不定义则窗口不移动。
 
-When the window starts moving, all laser injections via Silver-Muller boundary conditions
-are immediately stopped for physical correctness.
+> **Warning:** 窗口开始移动后，所有通过 Silver-Muller 边界条件的激光注入会立即停止，以保证物理正确性。
 
-```
+### 属性速查表
+
+| 属性 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| time_start | float | 必填 | 窗口开始移动的时间 (\(T_r\)) |
+| velocity_x | float | 必填 | 窗口在 `x_max` 方向的平均速度，范围 [0, 1] (\(c\)) |
+| number_of_additional_shifts | int | 必填 | 额外移动步数 |
+| additional_shifts_time | float | 必填 | 执行额外移动的时间 (\(T_r\)) |
+
+> **Note:** 额外移动不计入平均速度评估。ParticleBinning 诊断支持 `moving_x` 轴（x 坐标经移动窗口校正）。
+
+### 代码示例
+```python
 MovingWindow(
-time_start = 0.,
-velocity_x = 1.,
-number_of_additional_shifts = 0.,
-additional_shifts_time = 0.,
+    time_start = 0.,
+    velocity_x = 1.,
+    number_of_additional_shifts = 0,
+    additional_shifts_time = 0.,
 )
-
 ```
-
-time_start[¶](#time_start)
-
-Type:
-
-Float.
-
-Default:
-
--
-
-The time at which the window starts moving.
-
-velocity_x[¶](#velocity_x)
-
-Type:
-
-Float.
-
-Default:
-
--
-
-The average velocity of the moving window in the `x_max` direction. It muste be between 0 and 1.
-
-number_of_additional_shifts[¶](#number_of_additional_shifts)
-
-Type:
-
-Integer.
-
-Default:
-
--
-
-The number of additional shifts of the moving window.
-
-additional_shifts_time[¶](#additional_shifts_time)
-
-Type:
-
-Float.
-
-Default:
-
--
-
-The time at which the additional shifts are done.
-
-Note
-
-The [particle binning diagnostics](#diagparticlebinning) accept an “axis” called `moving_x`
-corresponding to the `x` coordinate corrected by the moving window’s current movement.

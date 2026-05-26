@@ -1,188 +1,101 @@
-## TrackParticles diagnostics[¶](#trackparticles-diagnostics)
+# TrackParticles, NewParticles & Performances Diagnostics
 
-A particle tracking diagnostic records the macro-particle positions and momenta at various timesteps.
-Typically, this is used for plotting trajectories.
+## Block: DiagTrackParticles
 
-You can add a tracking diagnostic by including a block `DiagTrackParticles()` in the namelist,
-for instance:
+### 概述
+记录宏粒子在不同 timestep 的位置和动量，通常用于绘制轨迹。
 
-```
+### 属性速查表
+
+| 属性 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| species | str | 必填 | 被追踪物种的 `name` |
+| every | int / time selection | `0` | 输出间隔。若 >0 则写入 `TrackParticlesDisordered_abc.h5`（`abc` = 物种名） |
+| flush_every | int / time selection | `1` | 文件刷新间隔。与 `every` 重合时实际写入。刷新过频繁会严重拖慢模拟 |
+| filter | Python function | None（全部追踪） | 筛选被追踪粒子的条件函数（见下方） |
+| attributes | list[str] | `["x","y","z","px","py","pz","w"]` | 输出的粒子属性（见下方可用属性） |
+
+### 可用 `attributes`
+
+- 空间坐标: `"x"`, `"y"`, `"z"`
+- 动量: `"px"`, `"py"`, `"pz"`
+- 电荷: `"q"`
+- 统计权重: `"w"`
+- 量子参数: `"chi"`（仅辐射损失物种）
+- 插值场: `"Ex"`, `"Ey"`, `"Ez"`, `"Bx"`, `"By"`, `"Bz"`
+
+> **Note:** 插值场在 Maxwell 求解器之后计算，可能与推进粒子时（半步偏移）的值有差异。需精确值时使用 `keep_interpolated_fields`。
+
+### `filter` 函数规范
+
+参数为一个 `particles` 对象，具有属性 `x`, `y`, `z`, `px`, `py`, `pz`, `charge`, `weight`, `id`（以及 `keep_interpolated_fields` 启用的场属性）。每个属性为 numpy array。函数须返回同形状的 boolean numpy array（`True` = 追踪）。
+
+> **Note:** 在 `filter` 函数中，`px`, `py`, `pz` 实际为 \(\gamma v_x\), \(\gamma v_y\), \(\gamma v_z\)（不是动量）。输出诊断中的值不受此影响。
+
+> **Note:** `id` 属性初始为 0，仅通过 filter 后才获得正数 ID。
+
+> **Note:** 可在 filter 函数中访问 `Main.iteration` 获取当前 PIC 循环迭代号。当前时间 = `Main.iteration * Main.timestep`。
+
+### 代码示例
+```python
 DiagTrackParticles(
-species = "electron",
-every = 10,
-#    flush_every = 100,
-#    filter = my_filter,
-#    attributes = ["x", "px", "py", "Ex", "Ey", "Bz"]
+    species = "electron",
+    every = 10,
+    flush_every = 100,
+    filter = my_filter,
+    attributes = ["x", "px", "py", "Ex", "Ey", "Bz"]
 )
-
 ```
 
-species[¶](#id99)
-
-The [`name`](#id93) of the species to be tracked.
-
-every[¶](#id100)
-
-Default:
-
-0
-
-Number of timesteps between each output of particles trajectories, or a [time selection](#timeselections).
-If non-zero, the particles positions will be tracked and written in a file named `TrackParticlesDisordered_abc.h5`
-(where `abc` is the species’ [`name`](#id93)).
-
-flush_every[¶](#id101)
-
-Default:
-
-1
-
-Number of timesteps or a [time selection](#timeselections).
-
-When `flush_every` coincides with `every`, the output
-file for tracked particles is actually written (“flushed” from the buffer). Flushing
-too often can dramatically slow down the simulation.
-
-filter[¶](#filter)
-
-A python function giving some condition on which particles are tracked.
-If none provided, all particles are tracked.
-To use this option, the [numpy package](http://www.numpy.org/) must
-be available in your python installation.
-
-The function must have one argument, that you may call, for instance, `particles`.
-This object has several attributes `x`, `y`, `z`, `px`, `py`, `pz`, `charge`,
-`weight` and `id` (additionally, it may also have the
-attributes `Ex`, `Bx`, `Ey`, and so on, depending on [`keep_interpolated_fields`](#keep_interpolated_fields)).
-Each of these attributes
-are provided as numpy arrays where each cell corresponds to one particle.
-The function must return a boolean numpy array of the same shape, containing `True`
-for particles that should be tracked, and `False` otherwise.
-
-The following example selects all the particles that verify \(-1<p_x<1\)
-or \(p_z>3\):
-
-```
+选择满足 \(-1 < p_x < 1\) 或 \(p_z > 3\) 的粒子的 filter 示例：
+```python
 def my_filter(particles):
-return (particles.px>-1.)*(particles.px<1.) + (particles.pz>3.)
-
+    return (particles.px > -1.) * (particles.px < 1.) + (particles.pz > 3.)
 ```
 
-Note
+---
 
--
+## Block: DiagNewParticles
 
-In the `filter` function only, the `px`, `py` and `pz` quantities
-are not exactly the momenta.
-They are actually the velocities multiplied by the lorentz factor, i.e.,
-\(\gamma v_x\), \(\gamma v_y\) and \(\gamma v_z\).
-This is not true for the output of the diagnostic.
+### 概述
+仅在粒子被电离或其他物理模块生成时记录宏粒子信息。
 
--
+### 属性速查表
 
-The `id` attribute contains the [particles identification number](ids.html).
-This number is set to 0 at the beginning of the simulation. Only after particles have
-passed the filter, they acquire a positive `id`.
+所有参数与 `DiagTrackParticles` 相同，但有以下特殊注意事项：
 
--
+- 粒子生成在每个 timestep 都有记录，但 `every` 仅控制写入文件的频率。**推荐使用较大的 `every` 值以保持性能**
+- 对于电离产生的电子物种，属性 `"q"` 是电离前**离子**的电荷，而非电子电荷
 
-For advanced filtration, Smilei provides the quantity `Main.iteration`,
-accessible within the `filter` function. Its value is always equal to the current
-iteration number of the PIC loop. The current time of the simulation is thus
-`Main.iteration * Main.timestep`.
-
-attributes[¶](#attributes)
-
-Default:
-
-`["x","y","z","px","py","pz","w"]`
-
-A list of strings indicating the particle attributes to be written in the output.
-The attributes may be the particles’ spatial coordinates (`"x"`, `"y"`, `"z"`),
-their momenta (`"px"`, `"py"`, `"pz"`), their electrical charge (`"q"`),
-their statistical weight (`"w"`), their quantum parameter
-(`"chi"`, only for species with radiation losses) or the fields interpolated
-at their  positions (`"Ex"`, `"Ey"`, `"Ez"`, `"Bx"`, `"By"`, `"Bz"`).
-
-Note
-
-Here, interpolated fields are normally computed after the Maxwell solver.
-They may thus differ by half a timestep from those computed at the middle of the
-timestep to push particles. When exact values are needed, use the option
-[`keep_interpolated_fields`](#keep_interpolated_fields).
-
-## NewParticles diagnostics[¶](#newparticles-diagnostics)
-
-A new-particle diagnostic records the macro-particle information only at the time when
-they are generated by [Ionization](../Understand/ionization.html) or other [Physics modules](../Understand/physics_modules.html).
-
-You can add a new-particle diagnostic by including a block `DiagNewParticles()` in the namelist,
-for instance:
-
-```
+### 代码示例
+```python
 DiagNewParticles(
-species = "electron",
-every = 10,
-#    attributes = ["x", "px", "py", "Ex", "Ey", "Bz"]
+    species = "electron",
+    every = 10,
+    attributes = ["x", "px", "py", "Ex", "Ey", "Bz"]
 )
-
 ```
 
-All the arguments are identical to those of TrackParticles.
-However, there are particular considerations:
+---
 
--
+## Block: DiagPerformances
 
-Although the creation of particles is recorded at every timestep, the argument `every`
-only indicates how often the data is written to the file. It is recommended to avoid
-small values of `every` for better performance.
+### 概述
+记录每个 MPI 进程或每个 patch 的计算负载和计时器信息。**每个 namelist 只能有一个 `DiagPerformances` block**。
 
--
+### 属性速查表
 
-In the case of [Ionization](../Understand/ionization.html), if the chosen `species` is that of the ionized electrons,
-then the attribute “`q`” is not the charge of the electron, but the charge of the
-ion, before ionization occurred.
+| 属性 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| every | int / time selection | `0` | 输出间隔 |
+| flush_every | int / time selection | `1` | 文件刷新间隔。刷新过频繁会严重拖慢模拟 |
+| patch_information | bool | `False` | 若 `True`，在 patch 级别计算信息（见 [Performances()](post-processing.html#Performances)），可能影响性能 |
 
-## Performances diagnostics[¶](#performances-diagnostics)
-
-The performances diagnostic records information on the computational load and timers
-for each MPI process  or for each patch in the simulation.
-
-Only one block `DiagPerformances()` may be added in the namelist, for instance:
-
-```
+### 代码示例
+```python
 DiagPerformances(
-every = 100,
-#    flush_every = 100,
-#    patch_information = True,
+    every = 100,
+    flush_every = 100,
+    patch_information = True,
 )
-
 ```
-
-every[¶](#id103)
-
-Default:
-
-0
-
-Number of timesteps between each output, or a [time selection](#timeselections).
-
-flush_every[¶](#id104)
-
-Default:
-
-1
-
-Number of timesteps or a [time selection](#timeselections).
-
-When `flush_every` coincides with `every`, the output file is actually written
-(“flushed” from the buffer). Flushing too often might dramatically slow down the simulation.
-
-patch_information[¶](#patch_information)
-
-Default:
-
-`False`
-
-If `True`, some information is calculated at the patch level (see [`Performances()`](post-processing.html#Performances))
-but this may impact the code performances.

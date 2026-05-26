@@ -1,105 +1,73 @@
-## General rules[¶](#general-rules)
+# General Rules & Python Workflow
 
--
+## Namelist 基本规则
 
-Smilei requires a few blocks to be defined, such as:
+### Block 语法
+Smilei 通过 Python block（函数调用）定义模拟参数。在 block 外部可自由计算；在 block 内部只能定义 Smilei 变量。
 
-```
+```python
 Main(
-# ...
-timestep = 0.01,         # defines the timestep value
-grid_length = [10., 20.], # defines the 2D box dimensions
-# ...
+    timestep = 0.01,
+    grid_length = [10., 20.],
 )
-
 ```
 
-Outside blocks, you can calculate anything you require.
-Inside a block, you must only define variables for Smilei.
+### Python 缩进
+遵循标准 Python 缩进规则（4 空格）：
 
--
-
-The python syntax requires special indentation of each line.
-You begin with no indentation, but you have to add four spaces at the
-beginning of lines inside a group, and so on.
-For instance:
-
-```
+```python
 if a == 0:
-timestep = 0.1
-if b == 1:
-timestep = 0.2
+    timestep = 0.1
+    if b == 1:
+        timestep = 0.2
 else:
-timestep = 0.3
-
+    timestep = 0.3
 ```
 
--
+### 列表
+Python 列表使用 `[]` 并用逗号分隔：`mean_velocity = [0., 1.1, 3.]`
 
-You will need to use [lists](https://docs.python.org/2/tutorial/introduction.html#lists),
-which are series of things in python,
-defined between brackets `[]` and separated by commas.
-For example, `mean_velocity = [0., 1.1, 3.]`.
+### 导入
+可自由导入任何已安装 Python 包：`from math import pi`
 
--
+### 单位归一化
+所有量以任意参考值归一化。详见 [Units](../Understand/units.html)。
 
-You are free to import any installed python package into the namelist.
-For instance, you may obtain \(\pi\) using `from math import pi`.
+---
 
--
+## Python 工作流
 
-All quantities are normalized to arbitrary values: see [Units](../Understand/units.html).
+Smilei 在每个 MPI 进程启动一个 Python 解释器，执行以下步骤：
 
-## Python workflow[¶](#python-workflow)
+1. **Smilei 传递变量给 Python**:
+   - [`smilei_mpi_rank`](#smilei_mpi_rank) — 当前 MPI rank
+   - [`smilei_mpi_size`](#smilei_mpi_size) — MPI 进程总数
+   - [`smilei_omp_threads`](#smilei_omp_threads) — 每 MPI 的 OpenMP 线程数
+   - [`smilei_total_cores`](#smilei_total_cores) — 总核数
 
-Python is started at the beginning of the simulation (one python interpreter
-for each MPI process). The following steps are executed:
+2. **执行 namelist**
 
--
+3. **`preprocess()`** — 若用户定义，在此执行。适合计算 happi 后处理不需要的量
 
-A few variables from Smilei are passed to python so that they are
-available to the user:
+4. **模拟初始化** — 包括场和粒子数组分配
 
--
+5. **`cleanup()`** — 若用户定义，在此执行。适合删除不再需要的大型变量
 
-The rank of the current MPI process as [`smilei_mpi_rank`](#smilei_mpi_rank).
+6. **Python 解释器检查** — 若模拟中不需要 Python（如无 temporal profile），Python 被停止
 
--
+所有指令汇总在 `smilei.py` 文件中，用户可直接运行 `python -i smilei.py` 进行后处理。
 
-The total number of MPI processes as [`smilei_mpi_size`](#smilei_mpi_size).
+---
 
--
+## 命令行参数
 
-The number of OpenMP threads per MPI [`smilei_omp_threads`](#smilei_omp_threads).
+任何 Python 指令可作为命令行参数传入：
 
--
+```bash
+mpirun -n 4 ./smilei input.py "Main.print_every=10"
+```
 
-The total number of cores [`smilei_total_cores`](#smilei_total_cores).
-
--
-
-The namelist(s) is executed.
-
--
-
-Python runs `preprocess()` if the user has defined it.
-This is a good place to calculate things that are not needed for
-post-processing with happi.
-
--
-
-The simulation is initialized (including field and particle arrays).
-
--
-
-Python runs `cleanup()` if the user has defined it.
-This is a good place to delete unused heavy variables.
-
--
-
-Python checks whether the python interpreter is needed during the simulation
-(e.g. the user has defined a temporal [profile](profiles.html) which requires python
-to calculate it every timestep). Otherwise, python is stopped.
-
-All these instructions are summarized in a file `smilei.py`,
-so that the user can directly run `python -i smilei.py` for post-processing purposes.
+这在重启时特别有用：
+```bash
+mpirun ... ./smilei mynamelist.py "Checkpoints.restart_dir='/path/to/prev'"
+```

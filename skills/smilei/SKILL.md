@@ -5,16 +5,25 @@ description: "Use this skill when working with Smilei PIC (Particle-In-Cell) sim
 
 # Smilei PIC Simulation Skill
 
-**Always read [notes_index.md](notes_index.md) for the latest project-specific conventions and accumulated experience.**
-
 **For every simulation task, follow the 5-stage workflow in [workflow.md](workflow.md). Do not skip stages or proceed without user approval at each gate.**
+
+## Information Hierarchy
+
+This skill has two layers. Always check them in order:
+
+| Priority | Layer | Location | Contains | When to read |
+|----------|-------|----------|----------|--------------|
+| **1. First** | NOTES | [notes_index.md](notes_index.md) | Practical know-how: performance tips, gotchas, project conventions, code recipes | **Before answering any how-to question** (post-processing, namelist writing, job submission) |
+| **2. Then** | SOURCE | [SOURCE/site.md](SOURCE/site.md) | Structured API reference: every parameter's type, default, options | When you need exact parameter details after you know the approach |
+
+> **Rule:** NOTES tells you *how to do it right* (e.g., "set sort=False to skip the expensive sorting pass"). SOURCE tells you *what parameters exist*. Missing NOTES means giving incomplete or suboptimal answers.
 
 ## Quick Reference
 
-| Task | Guide |
-|------|-------|
-| Write a namelist | Start from [SOURCE/Use/namelist/_index.md](SOURCE/Use/namelist/_index.md) — pick the block you need |
-| Post-process data | Start from [SOURCE/Use/happi/_index.md](SOURCE/Use/happi/_index.md) — happi API by topic |
+| Task | Start here |
+|------|------------|
+| Write a namelist | 1) [notes_index.md](notes_index.md) → namelist section. 2) [SOURCE/Use/namelist/_index.md](SOURCE/Use/namelist/_index.md) |
+| Post-process data | 1) [notes_index.md](notes_index.md) → post-processing section. 2) [SOURCE/Use/happi/_index.md](SOURCE/Use/happi/_index.md) |
 | Run a simulation | [SOURCE/Use/run.md](SOURCE/Use/run.md) |
 | Install Smilei | [SOURCE/Use/installation.md](SOURCE/Use/installation.md) |
 | Understand units | [SOURCE/Understand/units.md](SOURCE/Understand/units.md) |
@@ -63,9 +72,11 @@ description: "Use this skill when working with Smilei PIC (Particle-In-Cell) sim
 | File | Content |
 |------|---------|
 | [_index.md](SOURCE/Use/happi/_index.md) | Full index of all happi topics |
-| [00_open.md](SOURCE/Use/happi/00_open.md) | Opening simulations, namelist access |
-| [01_diagnostics.md](SOURCE/Use/happi/01_diagnostics.md) | All diagnostic types (Scalar, Field, Probe, etc.) |
-| [02_data_plot.md](SOURCE/Use/happi/02_data_plot.md) | Data retrieval, VTK export, plotting, animation |
+| [00_open.md](SOURCE/Use/happi/00_open.md) | `happi.Open()`, namelist access, diagnostic info methods |
+| [01_shared_parameters.md](SOURCE/Use/happi/01_shared_parameters.md) | Shared parameters: timesteps, units, subset, average, data_log, data_transform, export_dir, **kwargs |
+| [02_diagnostics.md](SOURCE/Use/happi/02_diagnostics.md) | Diagnostic constructors with unique parameters (Scalar, Field, Probe, ParticleBinning, Screen, RadiationSpectrum, TrackParticles, NewParticles, Performances) |
+| [03_data_methods.md](SOURCE/Use/happi/03_data_methods.md) | Data retrieval: getData, getTimesteps, getTimes, getAxis, getXmoved, iterParticles, toVTK |
+| [04_plotting.md](SOURCE/Use/happi/04_plotting.md) | Plotting: plot, streak, animate, slide, multiPlot, multiSlide, set, advanced matplotlib options |
 
 ---
 

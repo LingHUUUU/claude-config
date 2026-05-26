@@ -1,106 +1,115 @@
-## Open a simulation[¶](#open-a-simulation "Link to this heading")
+# Opening Simulations
 
-In a _python_ command line (or script), call the following function to open your **Smilei** simulation. Note that several simulations can be opened at once, as long as they correspond to several [restarts](namelist.html#checkpoints) of the same simulation.
+## `happi.Open()`
 
-happi.Open(_results\_path\='.'_, _reference\_angular\_frequency\_SI\=None_, _show\=True_, _verbose\=True_, _scan\=True_, _pint\=True_)[¶](#happi.Open "Link to this definition")
+```python
+happi.Open(results_path='.', reference_angular_frequency_SI=None,
+           show=True, verbose=True, scan=True, pint=True)
+```
 
-* `results_path`: path or list of paths to the directory-ies where the results of the simulation-s are stored. It can also contain wildcards, such as `*` and `?` in order to include several simulations at once.
-* `reference_angular_frequency_SI`: overrides the value of the simulation parameter[reference\_angular\_frequency\_SI](namelist.html#reference%5Fangular%5Ffrequency%5FSI "reference_angular_frequency_SI"), in order to re-scale units.
-* `show`: if `False`, figures will not plot on screen. Make sure that you have not loaded another simulation or the matplotlib package. You may need to restart python.
-* `verbose`: if `False`, less information is printed while post-processing.
-* `scan`: if `False`, HDF5 output files are not scanned initially, and the namelist is not read.
-* `pint`: if `True`, _happi_ attempts to load the _Pint_ package and to use it for managing units.
+Open one or more Smilei simulations. Multiple simulations can be opened at once if they are restarts of the same simulation.
 
-**Returns:** An object containing various methods to extract and manipulate the simulation
+**Returns:** An object `S` providing access to namelist, diagnostic information, and diagnostic constructors.
 
-outputs, as described below.
+### Parameters
 
-**Example**:
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `results_path` | str / list[str] | `"."` | Path(s) to simulation result directories. Supports wildcards (`*`, `?`). |
+| `reference_angular_frequency_SI` | float | None | Overrides the simulation's `reference_angular_frequency_SI` for unit rescaling. |
+| `show` | bool | `True` | If `False`, figures do not display on screen. |
+| `verbose` | bool | `True` | If `False`, suppress printed information during post-processing. |
+| `scan` | bool | `True` | If `False`, skip HDF5 file scan and namelist reading. |
+| `pint` | bool | `True` | If `True`, attempt to load Pint for unit management. |
 
+### Example
+```python
 S = happi.Open("path/to/my/results")
-
-Once a simulation is opened, several methods are available to find information on the namelist or open various diagnostics. Checkout the namelist documentation to find out which diagnostics are included in Smilei: [scalars](namelist.html#diagscalar),[fields](namelist.html#diagfields), [probes](namelist.html#diagprobe),[particle binning](namelist.html#diagparticlebinning), [trajectories](namelist.html#diagtrackparticles)and [performances](namelist.html#diagperformances).
+```
 
 ---
 
-## Extract namelist information[¶](#extract-namelist-information "Link to this heading")
+## Namelist Access
 
-Once a simulation is opened as shown above, you can access the content of the namelist using the attribute `namelist`:
+Access any namelist variable via `S.namelist`:
 
-S = happi.Open("path/to/my/results") # Open a simulation
-print(S.namelist.Main.timestep)   # print the timestep
-print(S.namelist.Main.geometry)   # print the simulation dimensions
+```python
+S = happi.Open("path/to/my/results")
+print(S.namelist.Main.timestep)    # timestep value
+print(S.namelist.Main.geometry)    # simulation geometry
+```
 
-All the variables defined in the original namelist are copied into this variable.
+### Iterating over multi-instance blocks
 
-Concerning components like [Species](namelist.html#species), [External fields](namelist.html#externalfield) or [Probe diagnostics](namelist.html#diagprobe), of which several instances may exist, you can directly iterate over them:
+Blocks like `Species`, `ExternalField`, `DiagProbe` can have multiple instances:
 
+```python
+# Iterate all species
 for species in S.namelist.Species:
-    print("species "+species.name+" has mass "+str(species.mass))
+    print("species " + species.name + " has mass " + str(species.mass))
 
-You can also access to a specific component by referencing its number:
+# Access by index
+F = S.namelist.ExternalField[0]
 
-F = S.namelist.ExternalField[0]  # get the first external field
-print("An external field "+F.field+" was applied")
-
-In the case of the species, you can also obtain a given species by its name:
-
+# Access species by name
 species = S.namelist.Species["electron1"]
-print("species "+species.name+" has mass "+str(species.mass))
+```
 
 ---
 
-## Obtain diagnostic information[¶](#obtain-diagnostic-information "Link to this heading")
+## Diagnostic Information Methods
 
-Print available diagnostics
+### `S.getDiags(diagType)`
 
-Commands `S.Scalar`, `S.Field`, `S.Probe` (etc.) will display general information about the corresponding diagnostics in the simulation.
+Returns list of available diagnostics of the given type.
 
-List available diagnostics
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `diagType` | str | Diagnostic type: `"Field"`, `"Probe"`, `"ParticleBinning"`, `"Screen"`, `"RadiationSpectrum"`, `"TrackParticles"`, `"Performances"` |
 
-getDiags(_diagType_)[¶](#getDiags "Link to this definition")
+### `S.getScalars()`
 
-Returns a list of available diagnostics of the given type
+Returns list of available scalar names.
 
-* `diagType`: The diagnostic type (`"Field"`, `"Probe"`, etc.)
+### `S.getTrackSpecies()`
 
-Information on specific diagnostics
+Returns list of available tracked-particle species names.
 
-getScalars()[¶](#getScalars "Link to this definition")
+### `S.fieldInfo(diag)`
 
-Returns a list of available scalars.
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `diag` | int/str | Field diagnostic number or name |
 
-getTrackSpecies()[¶](#getTrackSpecies "Link to this definition")
+Returns dict with keys: `"diagNumber"`, `"diagName"`, `"fields"` (list of available fields; in AMcylindrical, a dict with modes per field).
 
-Returns a list of available tracked species.
+### `S.probeInfo(diag)`
 
-fieldInfo(_diag_)[¶](#fieldInfo "Link to this definition")
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `diag` | int/str | Probe diagnostic number or name |
 
-* `diag`: the number or name of a Field diagnostic
+Returns dict with keys: `"probeNumber"`, `"probeName"`, `"fields"`.
 
-Returns a dictionnary containing:
+### `S.performanceInfo()`
 
-* `"diagNumber"`: the diagnostic number
-* `"diagName"`: the diagnostic name
-* `"fields"`: list of the available fields in this diagnostic. In the case of`AMcylindrical` geometry, this is a dictionnary with a list of modes for each field.
-
-probeInfo(_diag_)[¶](#probeInfo "Link to this definition")
-
-* `diag`: the number or name of a Probe diagnostic
-
-Returns a dictionnary containing:
-
-* `"probeNumber"`: the diagnostic number
-* `"probeName"`: the diagnostic name
-* `"fields"`: list of the available fields in this diagnostic
-
-performanceInfo()[¶](#performanceInfo "Link to this definition")
-
-Returns a dictionnary containing:
-
-* `"quantities_uint"`: a list of the available integer quantities
-* `"quantities_double"`: a list of the available float quantities
-* `"patch_arrangement"`: the type of patch arrangement
-* `"timesteps"`: the list of timesteps
+Returns dict with keys: `"quantities_uint"`, `"quantities_double"`, `"patch_arrangement"`, `"timesteps"`.
 
 ---
+
+## Direct Diagnostic Access
+
+Calling `S.Scalar`, `S.Field`, `S.Probe` (etc.) without arguments prints general information about available diagnostics of that type.
+
+For full diagnostic constructor reference, see [Diagnostics Reference](02_diagnostics.md).
+
+---
+
+## `happi.openNamelist(namelist)`
+
+Read a namelist file without opening a simulation:
+
+```python
+namelist = happi.openNamelist("path/to/my/namelist.py")
+print(namelist.Main.timestep)
+```

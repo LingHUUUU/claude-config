@@ -1,163 +1,125 @@
-## External fields[¶](#external-fields)
+# External Fields, Antennas & Walls
 
-An initial field can be applied over the whole box
-at the beginning of the simulation using the `ExternalField` block:
+## Block: ExternalField
 
-```
+### 概述
+在模拟开始时对整个 box 施加初始场。
+
+### 属性速查表
+
+| 属性 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| field | str | 必填 | 场名称（见下方列表） |
+| profile | float / profile | 必填 | 初始空间分布 |
+
+### 可用场名称
+
+**Cartesian 几何:** `"Ex"`, `"Ey"`, `"Ez"`, `"Bx"`, `"By"`, `"Bz"`, `"Bx_m"`, `"By_m"`, `"Bz_m"`
+
+**AM 几何:** `"El_mode_i"`, `"Er_mode_i"`, `"Et_mode_i"`, `"Bl_mode_i"`, `"Br_mode_i"`, `"Bt_mode_i"`, `"Bl_m_mode_i"`, `"Br_m_mode_i"`, `"Bt_m_mode_i"`, `"A_mode_1"`, `"A0_mode_1"`（`i` 为 mode number）
+
+### 属性详情
+
+#### `field` — B 场时间偏移
+使用标准 FDTD 格式时，`B` 场定义在 \(t=0.5\Delta t\)，`B_m` 场定义在 \(t=0\)（与 `E` 场相同）。若模拟开始时域内有粒子，必须用 `B_m` 初始化 \(t=0\) 的 B 场。若省略 `B_m`，假定磁场恒定且 \(B_m = B\)。
+
+#### `field` — AM 几何
+所有场名必须包含 mode number `"_mode_i"`（如 `"Er_mode_1"`）。外部 envelope 场需在 `"A_mode_1"`（\(t=0\)）和 `"A0_mode_1"`（\(t=-\Delta t\)）初始化。
+
+### 代码示例
+```python
 ExternalField(
-field = "Ex",
-profile = constant(0.01, xvacuum=0.1)
+    field = "Ex",
+    profile = constant(0.01, xvacuum=0.1)
 )
-
 ```
 
-field[¶](#field)
+---
 
-Field names in Cartesian geometries: `"Ex"`, `"Ey"`, `"Ez"`, `"Bx"`, `"By"`, `"Bz"`, `"Bx_m"`, `"By_m"`, `"Bz_m"`.
-Field names in AM geometry: `"El_mode_m"`, `"Er_mode_m"`, `"Et_mode_m"`, `"Bl_mode_m"`, `"Br_mode_m"`, `"Bt_mode_m"`, `"Bl_m_mode_m"`, `"Br_m_mode_m"`, `"Bt_m_mode_m"`, `"A_mode_1"`, `"A0_mode_1"` .
+## Block: PrescribedField
 
-profile[¶](#profile)
+### 概述
+在整个模拟过程中叠加用户定义的含时空依赖的电磁场。这些场推动粒子但**不参与 Maxwell 求解**（非自洽）。适用于描述给定外场中的带电粒子动力学。
 
-Type:
+`PrescribedField` **不在 Field 诊断中可见**，但可通过 Probe 和 TrackParticles 的场属性观测（因为它们采样作用于宏粒子的总场）。
 
-float or [profile](profiles.html)
+### 属性速查表
 
-The initial spatial profile of the applied field.
-Refer to [Units](../Understand/units.html) to understand the units of this field.
+| 属性 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| field | str | 必填 | 场名称（见下方列表） |
+| profile | Python function | 必填 | 时空分布函数：参数为 `(x, t)` 或 `(x, y, t)` 等 |
 
-Note that when using standard FDTD schemes, `B` fields are given at time `t=0.5 dt` and `B_m` fields at time `t=0` like `E` fields.
-It is important to initialize `B_m` fields at `t=0` if there are particles in the simulation domain at the start of the simulation.
-If `B_m` is omited, it is assumed that the magnetic field is constant and that `B_m=B`.
+### 可用场名称
 
-Note that in AM geometry all field names must be followed by the number `"i"` of the mode that is currently passed with the string `"_mode_i"`. For instance `"Er_mode_1"`.
-In this geometry, an external envelope field can also be used. It needs to be initialized at times `"t=0"` in `"A_mode_1"` and `"t=-dt"` in `"A0_mode_1"`.
-The user must use the `"_mode_1"` suffix for these two fields because there is no other possible mode for them.
+**Cartesian:** `"Ex"`, `"Ey"`, `"Ez"`, `"Bx_m"`, `"By_m"`, `"Bz_m"`
 
-## Prescribed fields[¶](#prescribed-fields)
+**AM:** `"El_mode_m"`, `"Er_mode_m"`, `"Et_mode_m"`, `"Bl_m_mode_m"`, `"Br_m_mode_m"`, `"Bt_m_mode_m"`
 
-User-defined electromagnetic fields, with spatio-temporal dependence,
-can be superimposed to the self-consistent Maxwell fields.
-These fields push the particles but do not participate in the Maxwell solver:
-they are not self-consistent.
-They are however useful to describe charged particles’ dynamics in a given
-electromagnetic field.
+> **Warning:** 施加磁场时必须使用时间中心场 `"Bx_m"`, `"By_m"`, `"Bz_m"`（定义在整数时间步，是粒子推进器使用的场）。
 
-This feature is accessible using the `PrescribedField` block:
+> **Warning:** AM 几何中 mode "m" 必须在场名中显式指定，profile 必须返回复数值。
 
-```
+### 代码示例
+```python
 from numpy import cos, sin
-def myPrescribedProfile(x,t):
-return cos(x)*sin(t)
+def myPrescribedProfile(x, t):
+    return cos(x) * sin(t)
 
 PrescribedField(
-field = "Ex",
-profile = myPrescribedProfile
+    field = "Ex",
+    profile = myPrescribedProfile
 )
-
 ```
 
-field[¶](#id65)
+---
 
-Field names in Cartesian geometries: `"Ex"`, `"Ey"`, `"Ez"`, `"Bx_m"`, `"By_m"` or `"Bz_m"`.
-Field names in AM geometry: `"El_mode_m"`, `"Er_mode_m"`, `"Et_mode_m"`, `"Bl_m_mode_m"`, `"Br_m_mode_m"` or `"Bt_m_mode_m"`.
+## Block: Antenna
 
-Warning
+### 概述
+在整个模拟过程中施加额外电流（天线）。
 
-When prescribing a magnetic field, always use the time-centered fields `"Bx_m"`, `"By_m"` or `"Bz_m"`.
-These fields are those used in the particle pusher, and are defined at integer time-steps.
+### 属性速查表
 
-Warning
+| 属性 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| field | str | 必填 | 电流方向: `"Jx"`, `"Jy"`, `"Jz"` |
+| space_profile | float / profile | 必填（与 `space_time_profile` 互斥） | 天线空间分布 |
+| time_profile | float / profile | 必填（与 `space_time_profile` 互斥） | 天线时间分布，与 `space_profile` 相乘 |
+| space_time_profile | float / profile | 必填（与上述两者互斥） | 时空联合分布函数，参数为 N+1 维：如 1D `(x,t)`, 2D `(x,y,t)` |
 
-When prescribing a field in AM geometry, the mode “m” must be specified explicitly in the name of the field and the profile
-must return a complex value.
+#### `space_time_profile` 函数签名
+函数须接受 `x`, `y`, `z` 为 float 或 numpy array。若接受 float，返回 float；若接受 numpy array（对应 1 个 patch 的坐标），返回同尺寸的 numpy array。
 
-Warning
-
-`PrescribedFields` are not visible in the `Field` diagnostic,
-but can be visualised through `Probes` and with the fields attributes of `TrackParticles`
-(since they sample the total field acting on the macro-particles).
-
-profile[¶](#id66)
-
-Type:
-
-float or [profile](profiles.html)
-
-The spatio-temporal profile of the applied field: a python function
-with arguments (x, t) or (x, y, t), etc.
-Refer to [Units](../Understand/units.html) to understand the units of this field.
-
-## Antennas[¶](#antennas)
-
-An antenna is an extra current applied during the whole simulation.
-It is applied using an `Antenna` block:
-
-```
+### 代码示例
+```python
 Antenna(
-field = "Jz",
-space_profile = gaussian(0.01),
-time_profile = tcosine(base=0., duration=1., freq=0.1)
+    field = "Jz",
+    space_profile = gaussian(0.01),
+    time_profile = tcosine(base=0., duration=1., freq=0.1)
 )
-
 ```
 
-field[¶](#id68)
+---
 
-The name of the current: `"Jx"`, `"Jy"` or `"Jz"`.
+## Block: PartWall
 
-space_profile[¶](#space_profile)
+### 概述
+引入墙壁以反射、停止、热化或移除到达的粒子。
 
-Type:
+### 属性速查表
 
-float or [profile](profiles.html)
+| 属性 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| kind | str | 必填 | 墙壁类型: `"reflective"`, `"stop"`, `"thermalize"`, `"remove"` |
+| x | float | 三选一 | 墙壁在 x 方向的位置 |
+| y | float | 三选一 | 墙壁在 y 方向的位置 |
+| z | float | 三选一 | 墙壁在 z 方向的位置 |
 
-The initial spatial profile of the applied antenna.
-Refer to [Units](../Understand/units.html) to understand the units of this current.
-
-time_profile[¶](#time_profile)
-
-Type:
-
-float or [profile](profiles.html)
-
-The temporal profile of the applied antenna. It multiplies `space_profile`.
-
-space_time_profile[¶](#id69)
-
-Type:
-
-float or [profile](profiles.html)
-
-A space & time profile for the antenna (not compatible with `space_profile`
-or `time_profile`). It should have `N+1``arguments, where ``N` is the dimension
-of the simulation. For instance `(x,t)` in 1D, `(x,y,t)` in 2D, etc.
-
-The function must accept `x`, `y` and `z` either as floats or numpy arrays.
-If it accepts floats, the return value must be a float.
-If it accepts numpy arrays, these arrays will correspond to the coordinates of 1 patch,
-and the return value must be a numpy array of the same size.
-
-## Walls[¶](#walls)
-
-A wall can be introduced using a `PartWall` block in order to
-reflect, stop, thermalize or kill particles which reach it:
-
-```
+### 代码示例
+```python
 PartWall(
-kind = "reflective",
-x = 20.
+    kind = "reflective",
+    x = 20.
 )
-
 ```
-
-kind[¶](#kind)
-
-The kind of wall: `"reflective"`, `"stop"`, `"thermalize"` or `"remove"`.
-
-x[¶](#x)
-
-y[¶](#y)
-
-z[¶](#z)
-
-Position of the wall in the desired direction. Use only one of `x`, `y` or `z`.

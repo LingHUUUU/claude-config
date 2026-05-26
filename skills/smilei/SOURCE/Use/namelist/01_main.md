@@ -1,489 +1,153 @@
-## Main variables[¶](#main-variables)
+# Main Variables
 
-The block `Main` is mandatory and has the following syntax:
+## Block: Main
 
-```
+### 概述
+`Main` block 是**必填**的，定义模拟的基本参数：几何、网格、时间步长、边界条件等。
+
+参考：[Units](../Understand/units.html), [Parallelization](../Understand/parallelization.html)
+
+---
+
+### 属性速查表
+
+#### 几何与插值
+
+| 属性 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| geometry | str | `"2Dcartesian"` | 几何类型: `"1Dcartesian"`, `"2Dcartesian"`, `"3Dcartesian"`, `"AMcylindrical"` |
+| interpolation_order | int | `2` | 粒子形状函数阶数: `1` (仅AM，含 Ruyten 校正), `2` (全配置), `4` (不支持向量化2D) |
+| interpolator | str | `"momentum-conserving"` | 场插值方式: `"momentum-conserving"` 或 `"wt"`（时间步相关插值） |
+| use_BTIS3_interpolation | bool | `False` | 启用 B-TIS3 插值（减少数值 Cherenkov 辐射） |
+| custom_oversize | int | `2`（根据 interpolation_order 自动设置） | 每个 patch 的 ghost cell 数 |
+
+#### 网格
+
+| 属性 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| grid_length | list[float] | 与 `number_of_cells` 二选一 | 各维度模拟长度 (\(L_r\)) |
+| number_of_cells | list[int] | 与 `grid_length` 二选一 | 各维度 cell 数量 |
+| cell_length | list[float] | 由 grid_length 和 number_of_cells 推导 | 各维度 cell 尺寸 (\(L_r\)) |
+
+#### 时间
+
+| 属性 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| simulation_time | float | 与 `number_of_timesteps` 二选一 | 模拟时长 (\(T_r\)) |
+| number_of_timesteps | int | 与 `simulation_time` 二选一 | 总 timestep 数 |
+| timestep | float | 与 `timestep_over_CFL` 二选一 | 单步时长 (\(T_r\)) |
+| timestep_over_CFL | float | 与 `timestep` 二选一 | 单步时长（CFL 比例），推荐 0.95 |
+| time_fields_frozen | float | 必填 | 模拟开始时场冻结的时间 (\(T_r\)) |
+
+#### 并行与性能
+
+| 属性 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| number_of_patches | list[int] | 必填 | 各方向 patch 数。必须为 2 的幂，总数 ≥ MPI 进程数。强烈建议多于 OpenMP 线程数。GPU 加速时建议每 MPI rank 1 个 patch |
+| patch_arrangement | str | `"hilbertian"` | patch 排序方式: `"hilbertian"` (Hilbert 曲线), `"linearized_XY"`/`"linearized_XYZ"` (行优先), `"linearized_YX"`/`"linearized_ZYX"` (列优先，不支持 Field 诊断) |
+| cluster_width | int | 自动（最小化内存） | X 方向 cluster 宽度（cell 数）。用于在 patch 内按 cell 排序粒子以改善缓存。须整除 patch 在 X 方向的 cell 数 |
+| gpu_computing | bool | `False` | 启用 GPU 加速 |
+
+#### Maxwell 求解器
+
+| 属性 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| maxwell_solver | str | `"Yee"` | Maxwell 求解器: `"Yee"` (全几何), `"M4"` (全几何), `"Cowan"`/`"Grassi"`/`"Lehe"`/`"Bouchard"` (2D), `"Lehe"`/`"Bouchard"` (3D), `"Lehe"`/`"Terzani"` (AM) |
+
+#### 边界条件
+
+| 属性 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| EM_boundary_conditions | list[list[str]] | `[["periodic"]]` | EM 边界条件: `"periodic"`, `"silver-muller"` (开放/注入), `"reflective"`, `"ramp??"` (AM 谱求解器基础开放BC, ??=cell数), `"PML"` |
+| EM_boundary_conditions_k | list[list[float]] | 见详情 | Silver-Muller 边界的入射波矢 \(k_{inc}\) |
+| number_of_pml_cells | list[list[int]] | `[[10,10],[10,10],[10,10]]` | PML 层 cell 数。非 PML 边界须设为 0 |
+| pml_sigma | list[profile] | `[lambda x: 20 * x**2]` | PML sigma 分布（每个维度 1 个 profile，定义在 [0,1] 区间） |
+| pml_kappa | list[profile] | `[lambda x: 1 + 79 * x**4]` | PML kappa 分布（同上） |
+
+#### Poisson 求解器
+
+| 属性 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| solve_poisson | bool | `True` | 初始化时是否求解 Poisson 方程 |
+| poisson_max_iteration | int | `50000` | Poisson 求解器最大迭代次数 |
+| poisson_max_error | float | `1e-14` | Poisson 求解器最大误差 |
+| solve_relativistic_poisson | bool | `False` | 是否求解相对论 Poisson 问题 |
+| relativistic_poisson_max_iteration | int | `50000` | 相对论 Poisson 最大迭代次数 |
+| relativistic_poisson_max_error | float | `1e-22` | 相对论 Poisson 最大误差 |
+
+#### AMcylindrical 专用
+
+| 属性 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| number_of_AM | int | `2` | Azimuthal Fourier 分解模式数（模式从 0 到 number_of_AM-1） |
+| number_of_AM_classical_Poisson_solver | int | `1` | 非相对论 Poisson 使用的模式数（须 ≤ number_of_AM） |
+| number_of_AM_relativistic_field_initialization | int | `1` | 相对论场初始化使用的模式数（须 ≤ number_of_AM） |
+
+#### 其他
+
+| 属性 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| reference_angular_frequency_SI | float | 必填 | 参考角频率 \(\omega_r\) 的 SI 值。碰撞/电离/辐射/QED 时必需 |
+| print_every | int | 自动（约 10 次/模拟） | 屏幕信息输出间隔（timestep） |
+| print_expected_disk_usage | bool | `True` | 是否打印预计磁盘用量（代价高时可禁用） |
+| random_seed | int | `0` | 随机种子。每个 patch 的 seed = random_seed + patch 索引 |
+
+---
+
+### 属性详情
+
+#### `geometry` — AMcylindrical 限制
+
+> **Warning:** AMcylindrical 中粒子 BC 必须 `"remove"`，EM 纵向 BC `"silver-muller"`，横向 BC `"buneman"`（或全部 `"PML"`）。不支持碰撞和 order-4 插值。
+
+AMcylindrical 中 grid 坐标为 2D \((x,r)\)，粒子坐标为 3D Cartesian \((x,y,z)\)。
+
+#### `EM_boundary_conditions` — 语法
+
+三种语法:
+1. `[[bc_all]]` — 所有边界相同
+2. `[[bc_X], [bc_Y], ...]` — 按维度
+3. `[[bc_Xmin, bc_Xmax], ...]` — 按每个面
+
+- **`"silver-muller"`**: 开放/注入 BC。用 `EM_boundary_conditions_k` 定义入射波矢。注入时确保 \(k_{inc}\) 与被注入波对齐；吸收时最优吸收方向为 \(k_{inc}\) 的镜面反射方向
+- **`"ramp??"`**: AM 谱求解器专用。前半 ghost cell 场不变，后半逐渐降至零
+- **`"PML"`**: 需配合 `number_of_pml_cells`，支持激光注入
+
+#### `EM_boundary_conditions_k` — 默认值
+- 2D: `[[1.,0.],[-1.,0.],[0.,1.],[0.,-1.]]`
+- 3D: `[[1.,0.,0.],[-1.,0.,0.],[0.,1.,0.],[0.,-1.,0.],[0.,0.,1.],[0.,0.,-1.]]`
+- AM: Xmin/Xmax/Rmax 面受影响，k 坐标在 xr 框架中
+
+#### `pml_sigma` / `pml_kappa` — Profile 规范
+Profile 为单变量函数，定义在 [0,1]: 0 = PML 内边界，1 = PML 外边界。单个 profile 应用于所有维度；每个维度的两个面使用相同 profile。
+
+参考：[PML in AM geometry](../Understand/PML.html)
+
+#### `maxwell_solver` — 求解器参考
+
+| Solver | 可用几何 | 参考 |
+|--------|----------|------|
+| Yee | 全部 | 标准 FDTD |
+| M4 | 全部 | [paper](https://doi.org/10.1016/j.jcp.2020.109388) |
+| Lehe | 2D, 3D, AM | [paper](https://journals.aps.org/prab/abstract/10.1103/PhysRevSTAB.16.021301) |
+| Bouchard | 2D, 3D | [thesis p.109](https://tel.archives-ouvertes.fr/tel-02967252) |
+| Terzani | AM | [paper](https://doi.org/10.1016/j.cpc.2019.04.007) |
+| Cowan, Grassi | 2D | |
+
+### 代码示例
+```python
 Main(
-geometry = "1Dcartesian",
-interpolation_order = 2,
-interpolator = "momentum-conserving",
-grid_length  = [16. ],
-cell_length = [0.01],
-simulation_time    = 15.,
-timestep    = 0.005,
-number_of_patches = [64],
-cluster_width = 5,
-maxwell_solver = 'Yee',
-EM_boundary_conditions = [
-["silver-muller", "silver-muller"],
-#        ["silver-muller", "silver-muller"],
-#        ["silver-muller", "silver-muller"],
-],
-time_fields_frozen = 0.,
-reference_angular_frequency_SI = 0.,
-print_every = 100,
-random_seed = 0,
+    geometry = "2Dcartesian",
+    interpolation_order = 2,
+    grid_length = [80.0 * Lr, 60.0 * Lr],
+    cell_length = [0.05 * Lr, 0.05 * Lr],
+    number_of_patches = [16, 16],
+    timestep = 0.95 / math.sqrt(2) * 0.05 * Lr / c,
+    simulation_time = 100.0 * Tr,
+    maxwell_solver = 'Yee',
+    EM_boundary_conditions = [["silver-muller", "silver-muller"]],
+    reference_angular_frequency_SI = omega0,
+    print_every = 100,
+    random_seed = 0,
 )
-
 ```
-
-geometry[¶](#geometry)
-
-The geometry of the simulation:
-
--
-
-`"1Dcartesian"`
-
--
-
-`"2Dcartesian"`
-
--
-
-`"3Dcartesian"`
-
--
-
-`"AMcylindrical"`: cylindrical geometry with [Azimuthal modes decomposition](../Understand/azimuthal_modes_decomposition.html).
-
-In the following documentation, all references to dimensions or coordinates
-depend on the `geometry`.
-1D, 2D and 3D stand for 1-dimensional, 2-dimensional and 3-dimensional cartesian
-geometries, respectively. All coordinates are ordered as \((x)\), \((x,y)\) or \((x,y,z)\).
-In the `"AMcylindrical"` case, all grid coordinates are 2-dimensional
-\((x,r)\), while particle coordinates (in [Species](#species))
-are expressed in the 3-dimensional Cartesian frame \((x,y,z)\).
-
-Warning
-
-The `"AMcylindrical"` geometry has some restrictions.
-Boundary conditions must be set to `"remove"` for particles,
-`"silver-muller"` for longitudinal EM boundaries and
-`"buneman"` for transverse EM boundaries.
-You can alternatively use `"PML"` for any EM boundary.
-Collisions and
-order-4 interpolation are not supported yet.
-
-interpolation_order[¶](#interpolation_order)
-
-Default:
-
-`2`
-
-Interpolation order, defines particle shape function:
-
--
-
-`1`  : 2 points stencil in r with Ruyten correction, 3 points stencil in x. Supported only in AM geometry.
-
--
-
-`2`  : 3 points stencil, supported in all configurations.
-
--
-
-`4`  : 5 points stencil, not supported in vectorized 2D geometry.
-
-The Ruyten correction is the scheme described bu equation 4.2 in [this paper](https://www.sciencedirect.com/science/article/abs/pii/S0021999183710703) .
-It allows for a more accurate description on axis at the cost of a higher statistic noise so it often requires the use of more macro-particles.
-
-interpolator[¶](#interpolator)
-
-Default:
-
-`"momentum-conserving"`
-
--
-
-`"momentum-conserving"`
-
--
-
-`"wt"`
-
-The interpolation scheme to be used in the simulation.
-`"wt"` is for the timestep dependent field interpolation scheme described in
-[this paper](https://doi.org/10.1016/j.jcp.2020.109388) .
-
-grid_length[¶](#grid_length)
-
-number_of_cells[¶](#number_of_cells)
-
-A list of numbers: size of the simulation box for each dimension of the simulation.
-
--
-
-Either `grid_length`, the simulation length in each direction in units of \(L_r\),
-
--
-
-or `number_of_cells`, the number of cells in each direction.
-
-Note
-
-In `AMcylindrical` geometry, the grid represents 2-dimensional fields.
-The second dimension is the radius of the cylinder.
-
-cell_length[¶](#cell_length)
-
-A list of floats: sizes of one cell in each direction in units of \(L_r\).
-
-simulation_time[¶](#simulation_time)
-
-number_of_timesteps[¶](#number_of_timesteps)
-
-Duration of the simulation.
-
--
-
-Either `simulation_time`, the simulation duration in units of \(T_r\),
-
--
-
-or `number_of_timesteps`, the total number of timesteps.
-
-timestep[¶](#timestep)
-
-timestep_over_CFL[¶](#timestep_over_CFL)
-
-Duration of one timestep.
-
--
-
-Either `timestep`, in units of \(T_r\),
-
--
-
-or `timestep_over_CFL`, in units of the Courant–Friedrichs–Lewy (CFL) time.
-
-gpu_computing[¶](#gpu_computing)
-
-Default:
-
-`False`
-
-Activates GPU acceleration if set to True
-
-number_of_patches[¶](#number_of_patches)
-
-A list of integers: the number of patches in each direction.
-Each integer must be a power of 2, and the total number of patches must be
-greater or equal than the number of MPI processes.
-It is also strongly advised to have more patches than the total number of openMP threads.
-See [Parallelization basics](../Understand/parallelization.html).On the other hand, in case of GPU-acceleration it is recommended to use one patch per MPI-rank
-(with one MPI-rank per GPU)
-
-patch_arrangement[¶](#patch_arrangement)
-
-Default:
-
-`"hilbertian"`
-
-Determines the ordering of patches and the way they are separated into the
-various MPI processes. Options are:
-
--
-
-`"hilbertian"`: following the Hilbert curve (see [this explanation](../Understand/parallelization.html#loadbalancingexplanation)).
-
--
-
-`"linearized_XY"` in 2D or `"linearized_XYZ"` in 3D: following the
-row-major (C-style) ordering.
-
--
-
-`"linearized_YX"` in 2D or `"linearized_ZYX"` in 3D: following the
-column-major (fortran-style) ordering. This prevents the usage of
-[Fields diagnostics](#diagfields) (see [Parallelization basics](../Understand/parallelization.html)).
-
-cluster_width[¶](#cluster_width)
-
-Default:
-
-set to minimize the memory footprint of the particles pusher, especially interpolation and projection processes
-
-For advanced users. Integer specifying the cluster width along X direction in number of cells.
-The “cluster” is a sub-patch structure in which particles are sorted for cache improvement.
-`cluster_width` must divide the number of cells in one patch (in dimension X).
-The finest sorting is achieved with `cluster_width=1` and no sorting with `cluster_width` equal to the full size of a patch along dimension X.
-The cluster size in dimension Y and Z is always the full extent of the patch.
-
-maxwell_solver[¶](#maxwell_solver)
-
-Default:
-
-‘Yee’
-
-The solver for Maxwell’s equations.
-Only `"Yee"` and `"M4"` are available for all geometries at the moment.
-`"Cowan"`, `"Grassi"`, `"Lehe"` and `"Bouchard"` are available for `2DCartesian`.
-`"Lehe"` and `"Bouchard"` are available for `3DCartesian`.
-`"Lehe"` and `"Terzani"` are available for `AMcylindrical`.
-The M4 solver is described in [this paper](https://doi.org/10.1016/j.jcp.2020.109388).
-The Lehe solver is described in [this paper](https://journals.aps.org/prab/abstract/10.1103/PhysRevSTAB.16.021301).
-The Bouchard solver is described in [this thesis p. 109](https://tel.archives-ouvertes.fr/tel-02967252).
-The Terzani solver is described in [this paper](https://doi.org/10.1016/j.cpc.2019.04.007).
-
-solve_poisson[¶](#solve_poisson)
-
-Default:
-
-True
-
-Decides if Poisson correction must be applied or not initially.
-
-poisson_max_iteration[¶](#poisson_max_iteration)
-
-Default:
-
-50000
-
-Maximum number of iteration for the Poisson solver.
-
-poisson_max_error[¶](#poisson_max_error)
-
-Default:
-
-1e-14
-
-Maximum error for the Poisson solver.
-
-solve_relativistic_poisson[¶](#solve_relativistic_poisson)
-
-Default:
-
-False
-
-Decides if relativistic Poisson problem must be solved for at least one species.
-See [Field initialization for relativistic species](../Understand/relativistic_fields_initialization.html) for more details.
-
-relativistic_poisson_max_iteration[¶](#relativistic_poisson_max_iteration)
-
-Default:
-
-50000
-
-Maximum number of iteration for the Poisson solver.
-
-relativistic_poisson_max_error[¶](#relativistic_poisson_max_error)
-
-Default:
-
-1e-22
-
-Maximum error for the Poisson solver.
-
-EM_boundary_conditions[¶](#EM_boundary_conditions)
-
-Type:
-
-list of lists of strings
-
-Default:
-
-`[["periodic"]]`
-
-The boundary conditions for the electromagnetic fields. Each boundary may have one of
-the following conditions: `"periodic"`, `"silver-muller"`, `"reflective"`, `"ramp??"` or `"PML"`.
-
-Syntax 1: `[[bc_all]]`, identical for all boundaries.
-Syntax 2: `[[bc_X], [bc_Y], ...]`, different depending on x, y or z.
-Syntax 3: `[[bc_Xmin, bc_Xmax], ...]`,  different on each boundary.
-
--
-
-`"silver-muller"` is an open boundary condition.
-The incident wave vector \(k_{inc}\) on each face is defined by
-`"EM_boundary_conditions_k"`.
-When using `"silver-muller"` as an injecting boundary,
-make sure \(k_{inc}\) is aligned with the wave you are injecting.
-When using `"silver-muller"` as an absorbing boundary,
-the optimal wave absorption on a given face will be along \(k_{abs}\)
-the specular reflection of \(k_{inc}\) on the considered face.
-
--
-
-`"ramp??"` is a basic, open boundary condition designed
-for the spectral solver in `AMcylindrical` geometry.
-The `??` is an integer representing a number of cells
-(smaller than the number of ghost cells).
-Over the first half, the fields remain untouched.
-Over the second half, all fields are progressively reduced down to zero.
-
--
-
-`"PML"` stands for Perfectly Matched Layer. It is an open boundary condition.
-The number of cells in the layer must be defined by `"number_of_pml_cells"`.
-It supports laser injection as in `"silver-muller"`.
-If not all boundary conditions are `PML`, make sure to set `number_of_pml_cells=0` on boundaries not using PML.
-
-EM_boundary_conditions_k[¶](#EM_boundary_conditions_k)
-
-Type:
-
-list of lists of floats
-
-Default:
-
-`[[1.,0.],[-1.,0.],[0.,1.],[0.,-1.]]` in 2D
-
-Default:
-
-`[[1.,0.,0.],[-1.,0.,0.],[0.,1.,0.],[0.,-1.,0.],[0.,0.,1.],[0.,0.,-1.]]` in 3D
-
-For `silver-muller` absorbing boundaries,
-the x,y,z coordinates of the unit wave vector `k` incident on each face
-(sequentially Xmin, Xmax, Ymin, Ymax, Zmin, Zmax).
-The number of coordinates is equal to the dimension of the simulation.
-The number of given vectors must be equal to 1 or to the number of faces
-which is twice the dimension of the simulation. In cylindrical geometry,
-`k` coordinates are given in the `xr` frame and only the Rmax face is affected.
-
-Syntax 1: `[[1,0,0]]`, identical for all boundaries.
-Syntax 2: `[[1,0,0],[-1,0,0], ...]`,  different on each boundary.
-
-number_of_pml_cells[¶](#number_of_pml_cells)
-
-Type:
-
-List of lists of integers
-
-Default:
-
-`[[10,10],[10,10],[10,10]]`
-
-Defines the number of cells in the `"PML"` layers using the same alternative syntaxes as `"EM_boundary_conditions"`.
-
-pml_sigma[¶](#pml_sigma)
-
-Type:
-
-List of profiles
-
-Default:
-
-[lambda x : 20 * x**2]
-
-Defines the sigma profiles across the transverse dimension of the PML for each dimension of the simulation.
-It must be expressed as a list of profiles (1 per dimension).
-
-If a single profile is given, it will be used for all dimensions.
-
-For a given dimension, the same profile is applied to both sides of the domain.
-
-The profile is given as a single variable function defined on the interval [0,1] where 0 is the inner bound of the PML and 1 is the outer bound of the PML.
-Please refer to [Perfectly Matched Layers](../Understand/PML.html) if needed in AM geometry.
-
-pml_kappa[¶](#pml_kappa)
-
-Type:
-
-List of profiles
-
-Default:
-
-[lambda x : 1 + 79 * x**4]
-
-Defines the kappa profiles across the transverse dimension of the PML for each dimension of the simulation.
-It must be expressed as a list of profiles (1 per dimension).
-
-If a single profile is given, it will be used for all dimensions.
-
-For a given dimension, the same profile is applied to both sides of the domain.
-
-The profile is given as a single variable function defined on the interval [0,1] where 0 is the inner bound of the PML and 1 is the outer bound of the PML.
-Please refer to [Perfectly Matched Layers](../Understand/PML.html) if needed in AM geometry.
-
-time_fields_frozen[¶](#time_fields_frozen)
-
-Default:
-
--
-
-Time, at the beginning of the simulation, during which fields are frozen.
-
-reference_angular_frequency_SI[¶](#reference_angular_frequency_SI)
-
-The value of the reference angular frequency \(\omega_r\) in SI units,
-only needed when collisions, ionization, radiation losses
-or multiphoton Breit-Wheeler pair creation are requested.
-This frequency is related to the normalization length according to \(L_r\omega_r = c\)
-(see [Units](../Understand/units.html)).
-
-print_every[¶](#print_every)
-
-Number of timesteps between each info output on screen. By default, 10 outputs per
-simulation.
-
-print_expected_disk_usage[¶](#print_expected_disk_usage)
-
-Default:
-
-`True`
-
-If `False`, the calculation of the expected disk usage, that is usually printed in the
-standard output, is skipped. This might be useful in rare cases where this calculation
-is costly.
-
-random_seed[¶](#random_seed)
-
-Default:
-
-0
-
-The value of the random seed. Each patch has its own random number generator, with a seed
-equal to `random_seed` + the index of the patch.
-
-number_of_AM[¶](#number_of_AM)
-
-Type:
-
-integer
-
-Default:
-
-2
-
-The number of azimuthal modes used for the Fourier decomposition in `"AMcylindrical"` geometry.
-The modes range from mode 0 to mode `"number_of_AM-1"`.
-
-number_of_AM_classical_Poisson_solver[¶](#number_of_AM_classical_Poisson_solver)
-
-Default:
-
-1
-
-The number of azimuthal modes used for the field initialization with non relativistic Poisson solver in `"AMcylindrical"` geometry.
-Note that this number must be lower or equal to the number of modes of the simulation.
-
-number_of_AM_relativistic_field_initialization[¶](#number_of_AM_relativistic_field_initialization)
-
-Default:
-
-1
-
-The number of azimuthal modes used for the relativistic field initialization in `"AMcylindrical"` geometry.
-Note that this number must be lower or equal to the number of modes of the simulation.
-
-use_BTIS3_interpolation[¶](#use_BTIS3_interpolation)
-
-Default:
-
-`False`
-
-If `True`, the B-translated interpolation scheme 3 (or B-TIS3) described in [PIC algorithms](../Understand/algorithms.html) is used.
-
-custom_oversize[¶](#custom_oversize)
-
-Type:
-
-integer
-
-Default:
-
-2
-
-The number of ghost-cell for each patches. The default value is set accordingly with
-the `interpolation_order` value.

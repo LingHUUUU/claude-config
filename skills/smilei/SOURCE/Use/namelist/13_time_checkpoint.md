@@ -1,224 +1,82 @@
-## Time selections[¶](#time-selections)
+# Time Selections, Checkpoints & Variables
 
-Several components (mainly diagnostics) may require a selection of timesteps to
-be chosen by the user. When one of these timesteps is reached, the diagnostics will
-output data. A time selection is given through the parameter `every` and is a list
-of several numbers.
+## Time Selections
 
-You may chose between five different syntaxes:
+多个组件（主要是诊断）通过 `every` 参数指定输出时间。五种语法：
 
 ```
-every = [               period                    ] # Syntax 1
-every = [       start,  period                    ] # Syntax 2
-every = [ start,  end,  period                    ] # Syntax 3
-every = [ start,  end,  period,  repeat           ] # Syntax 4
-every = [ start,  end,  period,  repeat,  spacing ] # Syntax 5
-
+every = [ period                    ]  # Syntax 1: 从0开始，每 period 输出
+every = [ start, period             ]  # Syntax 2: 从 start 开始
+every = [ start, end, period        ]  # Syntax 3: start 到 end
+every = [ start, end, period, repeat       ]  # Syntax 4: 每个 period 输出 repeat 次
+every = [ start, end, period, repeat, spacing ]  # Syntax 5: repeat 间间隔 spacing
 ```
 
-where
+| 参数 | 默认值 | 说明 |
+|------|--------|------|
+| `start` | 0 | 第一个输出 timestep |
+| `end` | ∞ | 最后一个输出 timestep |
+| `period` | 1 | 输出间隔 |
+| `repeat` | 1 | 每个 period 的输出次数 |
+| `spacing` | 1 | repeat 之间的间隔 |
 
--
+> **Tip:** `every = period`（不写列表）也接受。值设为 `0` 会被替换为默认值。`every = 0` 表示无输出。数字可为非整数（除 `repeat` 外），自动选择最近 timestep。
 
-`start` is the first timestep of the selection (defaults to 0);
+---
 
--
+## Block: Checkpoints
 
-`end` is the last timestep of the selection (defaults to ∞);
+### 概述
+在指定时间保存（dump）模拟状态，以便后续从此点重启。
 
--
+> **重启须知:**
+> - 不要重启到同一目录，文件会被覆盖。为新模拟创建新目录
+> - 每个 MPI 进程 dump 一个文件，总量可能很大
+> - 重启运行必须使用相同的 namelist（除 Checkpoints block 可修改）
 
-`period` is the separation between outputs (defaults to 1);
+### 属性速查表
 
--
+| 属性 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| dump_step | int | `0`（不 dump） | dump 之间的 timestep 数 |
+| dump_minutes | float | `0.`（不 dump） | dump 之间的分钟数。可与 `dump_step` 组合使用 |
+| exit_after_dump | bool | `True` | `True`: 首次 dump 后停止。`False`: 继续模拟 |
+| keep_n_dumps | int | `2` | 保留最近 n 个 dump（旧 dump 被覆盖）。默认 2 防止崩溃时丢失 |
+| file_grouping | int | `0`（不分组） | 每个目录最多存放的 dump 文件数。用于文件数限制的文件系统 |
+| dump_deflate | -- | -- | (待文档) |
 
-`repeat` indicates how many outputs to do at each period (defaults to 1);
+### 重启参数
 
--
+| 属性 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| restart_dir | str | `None` | 之前运行的目录（绝对或相对路径）。首次运行不指定。也可通过命令行传入: `mpirun ... ./smilei input.py "Checkpoints.restart_dir='/path/to/prev'"` |
+| restart_number | int | `None` | 使用前一次运行中的第几个 dump（0, 1, 2...）。取最新 dump 对应的编号 |
 
-`spacing` is the separation between each repeat (defaults to 1).
-
-For more clarity, this graph illustrates the five syntaxes for time selections:
-
-[](../_images/TimeSelections.png)
-
-Tips
-
--
-
-The syntax `every = period` is also accepted.
-
--
-
-Any value set to `0` will be replaced by the default value.
-
--
-
-Special case: `every=0` means no output.
-
--
-
-The numbers may be non-integers (apart from `repeat`). The closest timesteps are chosen.
-
-## Profiles[¶](#profiles)
-
-Some of the quantities described in the previous sections can be profiles that depend on
-space and/or time. See the [documentation on profiles](profiles.html) for detailed
-instructions.
-
-## Checkpoints[¶](#checkpoints)
-
-The simulation state can be saved (dumped) at given times (checkpoints)
-in order to be later restarted at that point.
-
-A few things are important to know when you need dumps and restarts.
-
--
-
-Do not restart the simulation in the same directory as the previous one. Files will be
-overwritten, and errors may occur. Create a new directory for your restarted simulation.
-
--
-
-Manage your disk space: each MPI process dumps one file, and the total can be significant.
-
--
-
-The restarted runs must have the same namelist as the initial simulation, except the
-[Checkpoints](#checkpoints) block, which can be modified.
-
-```
+### 代码示例
+```python
 Checkpoints(
-# restart_dir = "dump1",
-dump_step = 10000,
-dump_minutes = 240.,
-exit_after_dump = True,
-keep_n_dumps = 2,
+    dump_step = 10000,
+    dump_minutes = 240.,
+    exit_after_dump = True,
+    keep_n_dumps = 2,
 )
-
 ```
 
-Parameters to save the state of the current simulation
+---
 
-dump_step[¶](#dump_step)
+## Smilei 预定义变量
 
-Default:
+Smilei 向 namelist Python 解释器注入以下变量。**用户不应重新定义它们。** 可在 happi 后处理中通过 `S.namelist.smilei_mpi_size` 等访问。
 
-`0`
+| 变量 | 说明 |
+|------|------|
+| `smilei_mpi_rank` | 当前进程的 MPI rank |
+| `smilei_mpi_size` | MPI 进程总数 |
+| `smilei_omp_threads` | 每个 MPI 的 OpenMP 线程数 |
+| `smilei_total_cores` | 总核数 |
 
-The number of timesteps between each dump.
-If `0`, no dump is done.
+---
 
-dump_minutes[¶](#dump_minutes)
+## Profiles（简要）
 
-Default:
-
-`0.`
-
-The number of minutes between each dump.
-If `0.`, no dump is done.
-
-May be used in combination with [`dump_step`](#dump_step).
-
-exit_after_dump[¶](#exit_after_dump)
-
-Default:
-
-`True`
-
-If `True`, the code stops after the first dump. If `False`, the simulation continues.
-
-keep_n_dumps[¶](#keep_n_dumps)
-
-Default:
-
-`2`
-
-This tells Smilei to keep, in the current run,  only the last `n` dumps.
-Older dumps will be overwritten.
-
-The default value, `2`, saves one extra dump in case of a crash during the next dump.
-
-file_grouping[¶](#file_grouping)
-
-Default:
-
-`0` (no grouping)
-
-The maximum number of checkpoint files that can be stored in one directory.
-Subdirectories are created to accomodate for all files.
-This is useful on filesystem with a limited number of files per directory.
-
-dump_deflate[¶](#dump_deflate)
-
-to do
-
-Parameters to restart from a previous simulation
-
-restart_dir[¶](#restart_dir)
-
-Default:
-
-`None`
-
-The directory of a previous run from which Smilei should restart.
-For the first run, do not specify this parameter.
-
-This path must either absolute or be relative to the current directory.
-
-Note
-
-In many situations, the restarted runs will have the exact same namelist as the initial
-simulation, except this `restart_dir` parameter, which points to the previous simulation
-folder.
-You can use the same namelist file, and simply add an extra argument when you launch the
-restart:
-
-`mpirun ... ./smilei mynamelist.py "Checkpoints.restart_dir='/path/to/previous/run'"`
-
-restart_number[¶](#restart_number)
-
-Default:
-
-`None`
-
-The number of the dump (in the previous run) that should be used for the restart.
-For the first run, do not specify this parameter.
-
-In a previous run, the simulation state may have been dumped several times.
-These dumps are numbered 0, 1, 2, etc. until the number [`keep_n_dumps`](#keep_n_dumps).
-In case multiple dumps are kept, the newest one will overwrite the oldest one.
-To restart the simulation from the most advanced point, specify the dump number
-corresponding to the newest that was created.
-
-## Variables defined by Smilei[¶](#variables-defined-by-smilei)
-
-Smilei passes the following variables to the python interpreter for use in the
-namelist. They should not be re-defined by the user!
-
-smilei_mpi_rank[¶](#smilei_mpi_rank)
-
-The MPI rank of the current process.
-
-smilei_mpi_size[¶](#smilei_mpi_size)
-
-The total number of MPI processes.
-
-smilei_omp_threads[¶](#smilei_omp_threads)
-
-The number of OpenMP threads per MPI.
-
-smilei_total_cores[¶](#smilei_total_cores)
-
-The total number of cores.
-
-Note
-
-These variables can be access during `happi` post-processing, e.g.
-`S.namelist.smilei_mpi_size`.
-
-[Site index](site.html)
-
-Last updated on Mar 16, 2026
-
-Powered by [Sphinx 7.2.6](http://sphinx-doc.org/)
+部分量可为依赖空间和/或时间的分布函数。详见 [profiles documentation](profiles.html)。

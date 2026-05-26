@@ -1,313 +1,95 @@
-## Particle Injector[¶](#particle-injector)
+# Particle Injector & Merging
 
-Injectors enable to inject macro-particles in the simulation domain from the boundaries.
-By default, some parameters that are not specified are inherited from the associated [`species`](#id99).
+## Block: ParticleInjector
 
-Each particle injector has to be defined in a `ParticleInjector` block:
+### 概述
+从边界向模拟域注入宏粒子。未指定的参数默认从关联的 `Species` 继承。
 
-```
+### 属性速查表
+
+| 属性 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| name | str | 自动生成 | 注入器名称。可用于使另一注入器复制此注入器的位置 |
+| species | str | 必填 | 注入目标物种名 |
+| box_side | str | 必填 | 注入边界: `"xmin"`, `"xmax"`, `"ymin"`, `"ymax"`, `"zmin"`, `"zmax"` |
+| time_envelope | function / time profile | `tconstant()` | 注入器时间包络 |
+| position_initialization | str | 继承 species | 位置初始化方法 |
+| momentum_initialization | str | 继承 species | 动量初始化方法 |
+| mean_velocity | list[3] / profile | 继承 species | 初始漂移速度 (\(c\))。**无质量粒子时实际为动量 (\(m_e c\))** |
+| temperature | list[3] / profile | 继承 species | 初始温度 (\(m_e c^2\)) |
+| particles_per_cell | float / profile | 继承 species | 每 cell 注入粒子数 |
+| number_density | float / profile | 与 charge_density 二选一 | 数密度绝对值 (\(N_r\)) |
+| charge_density | float / profile | 与 number_density 二选一 | 电荷密度绝对值 |
+| regular_number | list[int] | 同 Species | `position_initialization="regular"` 时每个方向每 cell 的均匀粒子数: `[Nx, Ny, Nz]` |
+
+### `position_initialization` 选项
+
+| 值 | 说明 |
+|----|------|
+| `"species"` / `""` | 使用关联 species 的设置 |
+| `"regular"` | 均匀分布，由 [`regular_number`](#regular_number) 控制 |
+| `"random"` | 随机分布 |
+| `"centered"` | 每个 cell 中心 |
+| 另一注入器的 `name` | 复制目标注入器的位置（目标须使用上述三种方法之一） |
+
+### `momentum_initialization` 选项
+
+| 值 | 说明 |
+|----|------|
+| `"species"` / `""` | 使用关联 species 的设置 |
+| `"maxwell-juettner"` | 相对论 Maxwellian |
+| `"rectangular"` | 矩形分布 |
+
+### 代码示例
+```python
 ParticleInjector(
-name      = "injector1",
-species   = "electrons1",
-box_side  = "xmin",
-time_envelope = tgaussian(start=0, duration=10., order=4),
-
-# Parameters inherited from the associated ``species`` by default
-
-position_initialization = "species",
-momentum_initialization = "rectangular",
-mean_velocity = [0.5,0.,0.],
-temperature = [1e-30],
-number_density = 1,
-particles_per_cell = 16,
+    name = "injector1",
+    species = "electrons1",
+    box_side = "xmin",
+    time_envelope = tgaussian(start=0, duration=10., order=4),
+    position_initialization = "species",
+    momentum_initialization = "rectangular",
+    mean_velocity = [0.5, 0., 0.],
+    temperature = [1e-30],
+    number_density = 1,
+    particles_per_cell = 16,
 )
-
 ```
 
-name[¶](#id9)
-
-The name you want to give to this injector.
-If you do not specify a name, it will be attributed automatically.
-The name is useful if you want to inject particles at the same position of another injector.
-
-species[¶](#id10)
-
-The name of the species in which to inject the new particles
-
-box_side[¶](#box_side)
-
-From where the macro-particles are injected. Options are:
-
--
-
-`"xmin"`
-
--
-
-`"xmax"`
-
--
-
-`"ymin"`
-
--
-
-`"ymax"`
-
--
-
-`"zmax"`
-
--
-
-`"zmin"`
-
-time_envelope[¶](#time_envelope)
-
-Type:
-
-a python function or a [time profile](profiles.html)
-
-Default:
-
-`tconstant()`
-
-The temporal envelope of the injector.
-
-position_initialization[¶](#id11)
-
-Default:
-
-parameters provided the species
-
-The method for initialization of particle positions. Options are:
-
--
-
-`"species"` or empty `""`: injector uses the option of the specified [`species`](#id99).
-
--
-
-`"regular"` for regularly spaced. See [`regular_number`](#id18).
-
--
-
-`"random"` for randomly distributed
-
--
-
-`"centered"` for centered in each cell
-
--
-
-The [`name`](#id93) of another injector from which the positions are copied.
-This option requires (1) that the target injector’s positions are initialized
-using one of the three other options above.
-
-momentum_initialization[¶](#id12)
-
-Default:
-
-parameters provided the species
-
-The method for initialization of particle momenta. Options are:
-
--
-
-`"species"` or empty `""`: injector uses the option of the specified [`species`](#id99).
-
--
-
-`"maxwell-juettner"` for a relativistic maxwellian (see [how it is done](maxwell-juttner.html))
-
--
-
-`"rectangular"` for a rectangular distribution
-
-mean_velocity[¶](#id13)
-
-Type:
-
-a list of 3 floats or [profiles](profiles.html)
-
-Default:
-
-parameters provided the species
-
-The initial drift velocity of the particles, in units of the speed of light \(c\).
-
-WARNING: For massless particles, this is actually the momentum in units of \(m_e c\).
-
-temperature[¶](#id14)
-
-Type:
-
-a list of 3 floats or [profiles](profiles.html)
-
-Default:
-
-parameters provided the species
-
-The initial temperature of the particles, in units of \(m_ec^2\).
-
-particles_per_cell[¶](#id15)
-
-Type:
-
-float or [profile](profiles.html)
-
-Default:
-
-parameters provided the species
-
-The number of particles per cell to use for the injector.
-
-number_density[¶](#id16)
-
-charge_density[¶](#id17)
-
-Type:
-
-float or [profile](profiles.html)
-
-Default:
-
-parameters provided the species
-
-The absolute value of the number density or charge density (choose one only)
-of the particle distribution, in units of the reference density \(N_r\) (see [Units](../Understand/units.html))
-
-regular_number[¶](#id18)
-
-Type:
-
-A list of as many integers as the simulation dimension
-
-Same as for [Species](#species). When `position_initialization = "regular"`, this sets the number of evenly-spaced
-particles per cell in each direction: `[Nx, Ny, Nz]` in cartesian geometries.
-
-## Particle Merging[¶](#particle-merging)
-
-The macro-particle merging method is documented in
-the [corresponding page](../Understand/particle_merging.html).
-Note that for merging to be able to operate either vectorization or cell sorting must be activated.
-It is optionnally specified in the `Species` block:
-
-```
+---
+
+## Particle Merging（在 Species block 中）
+
+### 概述
+宏粒子合并方法。需激活向量化或 cell 排序才能使用。在 `Species` block 中配置。
+
+参考：[Particle Merging](../Understand/particle_merging.html)
+
+### 属性速查表
+
+| 属性 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| merging_method | str | `"none"` | 合并方法: `"none"` 禁用, `"vranic_cartesian"` 动量笛卡尔分解, `"vranic_spherical"` 动量球分解 |
+| merge_every | int / time selection | `0` | 合并事件间隔（timestep） |
+| merge_min_particles_per_cell | int | `4` | 触发合并的每 cell 最小粒子数 |
+| merge_min_packet_size | int | `4` | 合并包最小粒子数。须 ≥ 4 |
+| merge_max_packet_size | int | `4` | 合并包最大粒子数 |
+| merge_momentum_cell_size | list[3] | `[16,16,16]` | 动量空间离散化各方向子组数 |
+| merge_discretization_scale | str | `"linear"` | 动量离散化尺度: `"linear"` 或 `"log"`（log 仅支持球分解） |
+| merge_min_momentum | float | `1e-5` | [专家] log 尺度时的最小动量值（避免 log(0)） |
+| merge_min_momentum_cell_length | list[3] | `[1e-10,1e-10,1e-10]` | [专家] 动量空间离散最小子组长度（低于此值子组数设为 1） |
+| merge_accumulation_correction | bool | `True` | [专家] 激活累积校正（仅在线性尺度下工作） |
+
+### 代码示例
+```python
 Species(
-....
-
-# Merging
-merging_method = "vranic_spherical",
-merge_every = 5,
-merge_min_particles_per_cell = 16,
-merge_max_packet_size = 4,
-merge_min_packet_size = 4,
-merge_momentum_cell_size = [16,16,16],
-merge_discretization_scale = "linear",
-# Extra parameters for experts:
-merge_min_momentum_cell_length = [1e-10, 1e-10, 1e-10],
-merge_accumulation_correction = True,
+    # ... other species params ...
+    merging_method = "vranic_spherical",
+    merge_every = 5,
+    merge_min_particles_per_cell = 16,
+    merge_max_packet_size = 4,
+    merge_min_packet_size = 4,
+    merge_momentum_cell_size = [16, 16, 16],
+    merge_discretization_scale = "linear",
 )
-
 ```
-
-merging_method[¶](#merging_method)
-
-Default:
-
-`"none"`
-
-The particle merging method to use:
-
--
-
-`"none"`: no merging
-
--
-
-`"vranic_cartesian"`: method of M. Vranic with a cartesian momentum-space decomposition
-
--
-
-`"vranic_spherical"`: method of M. Vranic with a spherical momentum-space decomposition
-
-merge_every[¶](#merge_every)
-
-Default:
-
-`0`
-
-Number of timesteps between each merging event
-or a [time selection](#timeselections).
-
-min_particles_per_cell[¶](#min_particles_per_cell)
-
-Default:
-
-`4`
-
-The minimum number of particles per cell for the merging.
-
-merge_min_packet_size[¶](#merge_min_packet_size)
-
-Default:
-
-`4`
-
-The minimum number of particles per packet to merge. Must be greater or equal to 4.
-
-merge_max_packet_size[¶](#merge_max_packet_size)
-
-Default:
-
-`4`
-
-The maximum number of particles per packet to merge.
-
-merge_momentum_cell_size[¶](#merge_momentum_cell_size)
-
-Default:
-
-`[16,16,16]`
-
-A list of 3 integers defining the number of sub-groups in each direction
-for the momentum-space discretization.
-
-merge_discretization_scale[¶](#merge_discretization_scale)
-
-Default:
-
-`"linear"`
-
-The momentum discretization scale:: `"linear"` or `"log"`.
-The `"log"` scale only works with the spherical discretization at the moment.
-
-merge_min_momentum[¶](#merge_min_momentum)
-
-Default:
-
-`1e-5`
-
-[for experts] The minimum momentum value when the log scale
-is chosen (`merge_discretization_scale = log`).
-This avoids a potential 0 value in the log domain.
-
-merge_min_momentum_cell_length[¶](#merge_min_momentum_cell_length)
-
-Default:
-
-`[1e-10,1e-10,1e-10]`
-
-[for experts] The minimum sub-group length for the momentum-space
-discretization (below which the number of sub-groups is set to 1).
-
-merge_accumulation_correction[¶](#merge_accumulation_correction)
-
-Default:
-
-`True`
-
-[for experts] Activates the accumulation correction
-(see [Particle Merging](../Understand/particle_merging.html) for more information).
-The correction only works in linear scale.

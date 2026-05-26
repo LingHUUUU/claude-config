@@ -1,206 +1,68 @@
-## Probe diagnostics[¶](#probe-diagnostics)
+# Probe Diagnostics
 
-The fields from the previous section are taken at the PIC grid locations,
-but it is also possible to obtain the fields at arbitrary locations.
-These are called probes.
+## Block: DiagProbe
 
-A probe interpolates the fields at either one point (0-D),
-several points arranged in a line (1-D),
-or several points arranged in a 2-D or 3-D grid.
+### 概述
+在任意位置（非 PIC 网格点）插值获取场数据。支持 0-D（单点）、1-D（线）、2-D 或 3-D 网格。Probe 使用粒子插值器计算场，因此磁场相比 Fields 诊断有半个 timestep 的偏移。
 
-Note
+> **Note:** Probe 跟随移动窗口。如需获取等离子体中固定位置的场，创建冷、无电荷物种并 [追踪其粒子](#diagtrackparticles)。
 
--
+> **Note:** AMcylindrical 中 Probe 定义为 3D Cartesian 坐标，不能按 mode 分离。使用 Field 诊断获取柱坐标和按 mode 的信息。
 
-Probes follow the moving window.
-To obtain the fields at fixed points in the plasma instead, create a cold,
-chargeless species, and [track the particles](#diagtrackparticles).
+### 属性速查表
 
--
+| 属性 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| name | str | None | 诊断名称（仅后处理用） |
+| every | int / time selection | 必填 | 输出间隔（timestep） |
+| flush_every | int / time selection | `1` | 文件刷新间隔。刷新过频繁会严重拖慢模拟 |
+| origin | list[float] | 必填 | Probe 网格原点坐标（长度 = 模拟维度） |
+| corners | list[list[float]] | 与 `vectors` 二选一 | 绝对坐标定义的 probe 网格角点 |
+| vectors | list[list[float]] | 与 `corners` 二选一 | 相对于 `origin` 的坐标定义 probe 网格 |
+| number | list[int] | 0-D probe 不定义 | 每个 probe 轴的采样点数（每个维度一个整数） |
+| fields | list[str] | `[]`（= 全部 10 个默认场） | 输出场列表（见下方） |
+| time_integral | bool | `False` | 若 `True`，输出对时间积分。会强制每个 timestep 插值，建议减少 probe 点数 |
+| datatype | str | `"double"` | 数据类型: `"double"` (8 bytes) 或 `"float"` (4 bytes) |
 
-In “AMcylindrical” geometry, probes are defined with 3D Cartesian coordinates
-and cannot be separated per mode. Use Field diagnostics for cylindrical coordinates and
-information per mode.
+### 可用 `fields`
 
--
+默认（`[]`）输出全部: `"Ex"`, `"Ey"`, `"Ez"`, `"Bx"`, `"By"`, `"Bz"`, `"Jx"`, `"Jy"`, `"Jz"`, `"Rho"`
 
-Probes rely on the particle interpolator to compute fields so that the
-magnetic field is shifted by half a timestep compared to that of Fields diagnostics.
+额外可选:
+- `"PoyX"`, `"PoyY"`, `"PoyZ"` — Poynting 矢量分量
+- `"Jx_abc"`, `"Jy_abc"`, `"Jz_abc"`, `"Rho_abc"` — 物种 "abc" 的电流/电荷密度
+- Envelope 模型: `"Env_Chi"`, `"Env_A_abs"`, `"Env_E_abs"`, `"Env_Ex_abs"`
+- B-TIS3: `"ByBTIS3"`, `"BzBTIS3"`
 
-To add one probe diagnostic, include the block `DiagProbe`:
+### 示例
 
+**0-D probe（1D 模拟）：**
+```python
+DiagProbe(every=1, origin=[1.2])
 ```
+
+**1-D probe（1D 模拟）：**
+```python
+DiagProbe(every=1, origin=[1.2], corners=[[5.6]], number=[100])
+```
+
+**1-D probe（2D 模拟）：**
+```python
+DiagProbe(every=1, origin=[1.2, 4.], corners=[[5.6, 4.]], number=[100])
+```
+
+**2-D probe（2D 模拟）：**
+```python
+DiagProbe(every=1, origin=[0., 0.], corners=[[10.,0.], [0.,10.]], number=[100, 100])
+```
+
+### 代码示例
+```python
 DiagProbe(
-#name = "my_probe",
-every    = 10,
-origin   = [1., 1.],
-corners  = [
-[1.,10.],
-[10.,1.],
-],
-number   = [100, 100],
-fields   = ["Ex", "Ey", "Ez"]
+    every = 10,
+    origin = [1., 1.],
+    corners = [[1.,10.], [10.,1.]],
+    number = [100, 100],
+    fields = ["Ex", "Ey", "Ez"]
 )
-
-```
-
-name[¶](#id76)
-
-Optional name of the diagnostic. Used only for post-processing purposes.
-
-every[¶](#id77)
-
-Number of timesteps between each output or a [time selection](#timeselections).
-
-flush_every[¶](#id78)
-
-Default:
-
-1
-
-Number of timesteps or a [time selection](#timeselections).
-
-When `flush_every` coincides with `every`, the output
-file is actually written (“flushed” from the buffer). Flushing
-too often can dramatically slow down the simulation.
-
-origin[¶](#origin)
-
-Type:
-
-A list of floats, of length equal to the simulation dimensionality.
-
-The coordinates of the origin of the probe grid
-
-corners[¶](#corners)
-
-vectors[¶](#vectors)
-
-Type:
-
-A list of lists of floats.
-
-Defines the corners of the probe grid.
-Each corner is a list of coordinates (as many as the simulation dimensions).
-
-When using `corners`, the absolute coordinates of each corner must be specified.
-When using `vectors`, the coordinates relative to [`origin`](#origin) must be specified.
-
-number[¶](#number)
-
-Type:
-
-A list of integers, one for each dimension of the probe.
-
-The number of points in each probe axis. Must not be defined for a 0-D probe.
-
-fields[¶](#id79)
-
-Default:
-
-`[]`, which means `["Ex", "Ey", "Ez", "Bx", "By", "Bz", "Jx", "Jy", "Jz", "Rho"]`
-
-A list of fields among:
-
--
-
-the electric field components `"Ex"`, `"Ey"`, `"Ez"`
-
--
-
-the magnetic field components `"Bx"`, `"By"`, `"Bz"`
-
--
-
-the Poynting vector components `"PoyX"`, `"PoyY"`, `"PoyZ"`
-
--
-
-the current density components `"Jx"`, `"Jy"`, `"Jz"` and charge density `"Rho"`
-
--
-
-the current density `"Jx_abc"`, `"Jy_abc"`, `"Jz_abc"` and charge density `"Rho_abc"`
-of a given species named `"abc"`
-
-In the case of an envelope model for the laser (see [Laser envelope model](../Understand/laser_envelope.html)),
-the following fields are also available: `"Env_Chi"`, `"Env_A_abs"`, `"Env_E_abs"`, `"Env_Ex_abs"`.
-They are respectively the susceptibility, the envelope of the laser transverse vector potential,
-the envelope of the laser transverse electric field and the envelope of the laser longitudinal
-electric field.
-
-If the B-TIS3 interpolation scheme is activated (see [PIC algorithms](../Understand/algorithms.html)),
-the following fields are also available: `"ByBTIS3"`, `"BzBTIS3"`.
-
-time_integral[¶](#time_integral)
-
-Default:
-
-`False`
-
-If `True`, the output is integrated over time. As this option forces field interpolation
-at every timestep, it is recommended to use few probe points.
-
-datatype[¶](#id80)
-
-Default:
-
-`"double"`
-
-The data type when written to the HDF5 file. Accepts `"double"` (8 bytes) or `"float"` (4 bytes).
-
-Examples of probe diagnostics
-
--
-
-0-D probe in 1-D simulation
-
-```
-DiagProbe(
-every = 1,
-origin = [1.2]
-)
-
-```
-
--
-
-1-D probe in 1-D simulation
-
-```
-DiagProbe(
-every = 1,
-origin  = [1.2],
-corners = [[5.6]],
-number  = [100]
-)
-
-```
-
--
-
-1-D probe in 2-D simulation
-
-```
-DiagProbe(
-every = 1,
-origin  = [1.2, 4.],
-corners = [[5.6, 4.]],
-number  = [100]
-)
-
-```
-
--
-
-2-D probe in 2-D simulation
-
-```
-DiagProbe(
-every = 1,
-origin   = [0., 0.],
-corners  = [ [10.,0.], [0.,10.] ],
-number   = [100, 100]
-)
-
 ```
