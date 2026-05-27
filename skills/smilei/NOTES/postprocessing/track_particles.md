@@ -65,3 +65,10 @@ w  = particle_data["w"]
 |-----------------|-----------------|
 | TrackParticles | `"w"` |
 | ParticleBinning | `"weight"` |
+
+## 输出频率建议
+
+- TrackParticles 数据可用于绘制粒子相空间图
+- 若用户未指定频率, **默认每 20 个光周期输出一次**
+- 换算公式: `diag_every = int(20.0 * 2.0 * math.pi / dt)`, 其中 `2π/dt` 是一个光周期的步数
+- 场诊断 (`DiagFields`) 同理, 需要用户指定频率, 否则按 20 光周期

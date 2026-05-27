@@ -47,3 +47,73 @@ idx = np.where(timesteps == target)[0][0]   # Correct
 ## Matplotlib Backend
 
 Do NOT hardcode `matplotlib.use('Agg')` in scripts. Let the environment control the backend.
+
+## Field API Quick Reference
+
+### S.Field() 正确用法
+
+```python
+# 错误：'Rho_electron' 会作为 diagNumber（诊断索引），不是 field 名
+S.Field('Rho_electron', timestep=0)        # ❌
+
+# 正确：field 必须是第二个位置参数或关键字参数
+S.Field(0, 'Rho_electron', timesteps=0)    # ✅
+S.Field(0, field='Rho_electron', ...)      # ✅
+```
+
+### timesteps 是复数
+
+```python
+S.Field(0, 'Ex', timestep=0)    # ❌ timestep 是未知参数
+S.Field(0, 'Ex', timesteps=0)   # ✅ 复数
+```
+
+### getData() 返回 list
+
+```python
+S.Field(0, 'Ex', timesteps=0).getData()    # 返回 [array]，不是直接 array
+ex = S.Field(0, 'Ex', timesteps=0).getData()[0]  # ✅ 取 [0]
+```
+
+### 获取 timesteps 列表
+
+```python
+steps = S.Field(0, 'Ex').getTimesteps()    # 需要指定 field
+```
+
+### 空间轴
+
+```python
+x_axis = S.Field(0, 'Ex', timesteps=0).getAxis('x')  # Smilei 单位
+x_axis_um = x_axis * Lr * 1e6  # 转 um
+```
+
+### DiagFields 顺序
+
+来自 `input.py` 中 `DiagFields(fields=["Ex", "Bz", "Rho_electron", "Rho_proton"])`：
+
+| Index | Field |
+|-------|-------|
+| 0 | Ex |
+| 1 | Bz |
+| 2 | Rho_electron |
+| 3 | Rho_proton |
+
+```python
+# 通过索引取
+data = S.Field(0, timesteps=0).getData()  # ❌ 必须指定 field，不能省略
+# 正确方式：逐个取
+ex  = S.Field(0, 'Ex', timesteps=0).getData()[0]
+bz  = S.Field(0, 'Bz', timesteps=0).getData()[0]
+rho = S.Field(0, 'Rho_electron', timesteps=0).getData()[0]
+```
+
+### ParticleBinning 通过 name 访问
+
+```python
+pb = S.ParticleBinning('electron_phase_space')  # ✅ 直接用 DiagParticleBinning 的 name
+steps_p = pb.getTimesteps()
+xa = pb.getAxis('x') * Lr * 1e6
+pa = pb.getAxis('px')
+data = S.ParticleBinning('electron_phase_space', timesteps=N).getData()[0]
+```

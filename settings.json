@@ -1,13 +1,13 @@
 {
   "env": {
     "DISABLE_AUTOUPDATER": "1",
-    "ANTHROPIC_BASE_URL": "https://api.deepseek.com/anthropic",
-    "ANTHROPIC_AUTH_TOKEN": "sk-f58a6879f8cf4583bc2db62d202394bc",
-    "ANTHROPIC_MODEL": "deepseek-v4-pro[1m]",
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "deepseek-v4-pro[1m]",
-    "ANTHROPIC_DEFAULT_SONNET_MODEL": "deepseek-v4-pro[1m]",
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "deepseek-v4-flash",
-    "CLAUDE_CODE_SUBAGENT_MODEL": "deepseek-v4-flash",
+    "ANTHROPIC_BASE_URL": "https://api.xiaomimimo.com/anthropic",
+    "ANTHROPIC_AUTH_TOKEN": "sk-snbxahn2ujl4c6tflmsbl28ofvnyctu8af7f5p9eykqji5cx",
+    "ANTHROPIC_MODEL": "mimo-v2.5-pro[1m]",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "mimo-v2.5-pro[1m]",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "mimo-v2.5-pro[1m]",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "MiMo-V2.5[1m]",
+    "CLAUDE_CODE_SUBAGENT_MODEL": "MiMo-V2.5[1m]",
     "CLAUDE_CODE_EFFORT_LEVEL": "max"
   },
   "defaultMode": "auto",

@@ -1,27 +1,27 @@
 ---
 name: smilei
-description: "Use this skill when working with Smilei PIC (Particle-In-Cell) simulations for laser-plasma interaction. Covers writing namelists/input files, running simulations with MPI on Slurm clusters, post-processing with happi, and troubleshooting. Trigger when user mentions Smilei, PIC simulation, laser-plasma, namelist, happi, or references .py input files in simulation directories."
+description: "Use this skill when working with Smilei PIC (Particle-In-Cell) simulations for laser-plasma interaction. Covers writing namelists/input files, running simulations with MPI on Slurm clusters, post-processing with happi, and troubleshooting. Trigger when user mentions Smilei, PIC simulation, laser-plasma, namelist, happi, or references .py input files in simulation directories. Also trigger for: 创建项目, 新建模拟, 项目模板, init project, project template."
 ---
 
 # Smilei PIC Simulation Skill
 
-**For every simulation task, follow the 5-stage workflow in [workflow.md](workflow.md). Do not skip stages or proceed without user approval at each gate.**
-
 ## Information Hierarchy
 
-This skill has two layers. Always check them in order:
+This skill has three layers. Check them based on task:
 
 | Priority | Layer | Location | Contains | When to read |
 |----------|-------|----------|----------|--------------|
 | **1. First** | NOTES | [notes_index.md](notes_index.md) | Practical know-how: performance tips, gotchas, project conventions, code recipes | **Before answering any how-to question** (post-processing, namelist writing, job submission) |
 | **2. Then** | SOURCE | [SOURCE/site.md](SOURCE/site.md) | Structured API reference: every parameter's type, default, options | When you need exact parameter details after you know the approach |
+| **3. For new projects** | TEMPLATES | [TEMPLATES/templates_index.md](TEMPLATES/templates_index.md) | Project templates: directory structure, input.py, post.ipynb, submit scripts | When creating new simulation projects |
 
-> **Rule:** NOTES tells you *how to do it right* (e.g., "set sort=False to skip the expensive sorting pass"). SOURCE tells you *what parameters exist*. Missing NOTES means giving incomplete or suboptimal answers.
+> **Rule:** NOTES tells you *how to do it right*. SOURCE tells you *what parameters exist*. TEMPLATES gives you *ready-to-use boilerplate*.
 
 ## Quick Reference
 
 | Task | Start here |
 |------|------------|
+| **创建新项目** | [TEMPLATES/templates_index.md](TEMPLATES/templates_index.md) |
 | Write a namelist | 1) [notes_index.md](notes_index.md) → namelist section. 2) [SOURCE/Use/namelist/_index.md](SOURCE/Use/namelist/_index.md) |
 | Post-process data | 1) [notes_index.md](notes_index.md) → post-processing section. 2) [SOURCE/Use/happi/_index.md](SOURCE/Use/happi/_index.md) |
 | Run a simulation | [SOURCE/Use/run.md](SOURCE/Use/run.md) |
