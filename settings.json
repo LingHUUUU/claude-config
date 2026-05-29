@@ -2,49 +2,68 @@
   "env": {
     "DISABLE_AUTOUPDATER": "1",
     "ANTHROPIC_BASE_URL": "https://api.xiaomimimo.com/anthropic",
-    "ANTHROPIC_AUTH_TOKEN": "sk-snbxahn2ujl4c6tflmsbl28ofvnyctu8af7f5p9eykqji5cx",
+    "ANTHROPIC_AUTH_TOKEN": "sk-cy4lxrq3fm878zym26h7fopf12h71qwykkl3wonw25p5zzss",
     "ANTHROPIC_MODEL": "mimo-v2.5-pro[1m]",
     "ANTHROPIC_DEFAULT_OPUS_MODEL": "mimo-v2.5-pro[1m]",
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "mimo-v2.5-pro[1m]",
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "MiMo-V2.5[1m]",
-    "CLAUDE_CODE_SUBAGENT_MODEL": "MiMo-V2.5[1m]",
-    "CLAUDE_CODE_EFFORT_LEVEL": "max"
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "mimo-v2.5[1m]",
+    "CLAUDE_CODE_SUBAGENT_MODEL": "mimo-v2.5[1m]",
+    "CLAUDE_CODE_EFFORT_LEVEL": "max",
+    "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS": "1",
+    "CLAUDE_CODE_SIMPLE": "1"
   },
-  "defaultMode": "auto",
-  "skipAutoPermissionPrompt": true,
   "permissions": {
     "defaultMode": "auto"
   },
+  "model": "opus",
+  "skipAutoPermissionPrompt": true,
+  "defaultMode": "auto",
   "mcpServers": {
     "git": {
       "command": "npx",
-      "args": ["@anthropic/mcp-server-git"],
+      "args": [
+        "@anthropic/mcp-server-git"
+      ],
       "type": "stdio"
     },
     "playwright": {
       "command": "npx",
-      "args": ["@playwright/mcp@latest"],
+      "args": [
+        "@playwright/mcp@latest"
+      ],
       "type": "stdio"
     },
     "openmemory": {
       "command": "npx",
-      "args": ["@peakmojo/mcp-openmemory@latest"],
+      "args": [
+        "@peakmojo/mcp-openmemory@latest"
+      ],
       "type": "stdio"
     },
     "websearch": {
       "command": "npx",
-      "args": ["-y", "agentsweb-mcp"],
+      "args": [
+        "-y",
+        "agentsweb-mcp"
+      ],
       "type": "stdio"
     },
     "fetch": {
       "command": "npx",
-      "args": ["-y", "@anthropic/mcp-server-fetch"],
+      "args": [
+        "-y",
+        "@anthropic/mcp-server-fetch"
+      ],
       "type": "stdio"
     },
     "jupyter": {
       "command": "python3",
-      "args": ["-m", "jupyter_mcp_server"],
+      "args": [
+        "-m",
+        "jupyter_mcp_server"
+      ],
       "type": "stdio"
     }
-  }
+  },
+  "skipDangerousModePermissionPrompt": true
 }
