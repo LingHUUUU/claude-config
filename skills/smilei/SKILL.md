@@ -1,6 +1,6 @@
 ---
 name: smilei
-description: "Use this skill when working with Smilei PIC (Particle-In-Cell) simulations for laser-plasma interaction. Covers writing namelists/input files, running simulations with MPI on Slurm clusters, post-processing with happi, and troubleshooting. Trigger when user mentions Smilei, PIC simulation, laser-plasma, namelist, happi, or references .py input files in simulation directories. Also trigger for: 创建项目, 新建模拟, 项目模板, init project, project template."
+description: "Use this skill when working with Smilei PIC (Particle-In-Cell) simulations for laser-plasma interaction. Covers writing namelists/input files, running simulations with MPI on Slurm clusters, post-processing with happi, and troubleshooting. Trigger when user mentions Smilei, PIC simulation, laser-plasma, namelist, happi, post-processing, or references .py input files in simulation directories. Also trigger for: 创建项目, 新建模拟, 项目模板, 后处理, init project, project template."
 ---
 
 # Smilei PIC Simulation Skill

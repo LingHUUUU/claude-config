@@ -1,17 +1,17 @@
 {
   "env": {
     "DISABLE_AUTOUPDATER": "1",
-    "ANTHROPIC_BASE_URL": "https://token-plan-cn.xiaomimimo.com/anthropic",
-    "ANTHROPIC_AUTH_TOKEN": "tp-ccjqvw48majefvhznt7aomqgsg8d44slda8v7afzforkd4t7",
+    "ANTHROPIC_BASE_URL": "https://token-plan-sgp.xiaomimimo.com/anthropic",
+    "ANTHROPIC_AUTH_TOKEN": "tp-spkchnha14dgglt35jlihayhh5b4b6j5vjjb5fc7qhcpu3x5",
     "ANTHROPIC_MODEL": "mimo-v2.5-pro[1m]",
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "mimo-v2.5[1m]",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "mimo-v2.5-pro[1m]",
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "mimo-v2.5-pro[1m]",
     "ANTHROPIC_DEFAULT_HAIKU_MODEL": "mimo-v2.5[1m]",
     "CLAUDE_CODE_SUBAGENT_MODEL": "mimo-v2.5[1m]",
     "CLAUDE_CODE_EFFORT_LEVEL": "max"
   },
   "permissions": {
-    "defaultMode": "bypassPermissions"
+    "defaultMode": "auto"
   },
   "model": "opus",
   "skipAutoPermissionPrompt": true,

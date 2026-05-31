@@ -35,7 +35,7 @@
 | Topic | File | Content |
 |-------|------|---------|
 | Project conventions | [postprocessing/conventions.md](NOTES/postprocessing/conventions.md) | Directory layout, GIF workflow, server-side rendering |
-| Happi tips | [postprocessing/happi_tips.md](NOTES/postprocessing/happi_tips.md) | Timestep lookup, Rho sign, getTimes/units, array indexing, transpose |
+| Happi tips | [postprocessing/happi_tips.md](NOTES/postprocessing/happi_tips.md) | Timestep lookup, Rho sign, getTimes/units, array indexing, transpose, happi vs h5py |
 | TrackParticles | [postprocessing/track_particles.md](NOTES/postprocessing/track_particles.md) | Physical time → step conversion, sort=False fast read, nested dict structure |
 
 ### Gotchas

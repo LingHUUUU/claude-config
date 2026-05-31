@@ -44,6 +44,29 @@ idx = np.where(timesteps == target)[0][0]   # Correct
 - Use `np.squeeze()` to remove singleton dimensions from `getData()`
 - For `imshow`: transpose to `bz.T` for (y, x) layout expected by matplotlib
 
+## 用 happi 而非 h5py 读取数据
+
+后处理应始终用 happi，不要直接用 h5py 读 HDF5 文件。原因：
+
+- **Screen 诊断**：happi 读出的是单步增量数据；若需累积谱，需手动遍历 `timesteps` 逐步累加。h5py 直接读出的也是增量，但 happi 会做归一化（除以常数因子），两者数值不同，混用会导致结果不一致。
+- **Field/Scalar 等**：happi 提供 `getAxis()`、`getTimes()`、单位转换等便利接口，h5py 需要手动解析 HDF5 结构。
+- **唯一例外**：TrackParticles 极大文件（>10 GB）时，happi 的 `iterParticles(chunksize=)` 是推荐方式，无需绕道 h5py。
+
+```python
+# ✅ 正确：用 happi 累积 Screen 数据
+import happi, numpy as np
+S = happi.Open("data")
+ts = S.Screen(0).getTimesteps()
+total = np.zeros_like(S.Screen(0, timesteps=ts[0]).getData()[0])
+for t in ts:
+    total += S.Screen(0, timesteps=int(t)).getData()[0]
+
+# ❌ 错误：用 h5py 直接读取
+# import h5py
+# with h5py.File("data/Screen0.h5") as f:
+#     data = f["timestep00004014"][:]  # 数值与 happi 不同，不可混用
+```
+
 ## Matplotlib Backend
 
 Do NOT hardcode `matplotlib.use('Agg')` in scripts. Let the environment control the backend.
